@@ -34,12 +34,6 @@ public:
 
         auto font = load_font("heartbit.fnt");
 
-        auto e = make_entity();
-        pack(e, Transform{{0, 0}, {2, 2}});
-        auto &text = pack(e, Text{font, "Hello World!"});
-        text.wrap = Text::Wrap;
-        text.width = 256;
-
         // All systems invalid beyond this point
 
         //two::get_key();
@@ -51,11 +45,12 @@ public:
         //two::scancode_down()
 
         auto camera = make_entity();
-        pack(camera, Camera(100, {119, 194, 217}, {3.5, 2.5}));
+        auto &cam = pack(camera, Camera(64, {119, 194, 217}, {3.5, 2.5}));
+        cam.scale = 2;
 
         for (float y = 0; y < 6; ++y) {
             for (float x = 0; x < 9; ++x) {
-                auto sprite = load_sprite("char.png").value();
+                auto sprite = load_sprite("char64.png").value();
 
                 auto ch = make_entity();
                 pack(ch, Transform{{x, y}, {1, 1}, 0});
@@ -66,6 +61,12 @@ public:
         }
         auto &entity = unpack_one<Sprite>();
         entity.layer = 2;
+        auto e = make_entity();
+        pack(e, Transform{{0, 0}, {1, 1}});
+        auto &text = pack(e, Text{font, "Hello World!"});
+        text.wrap = Text::Wrap;
+        text.width = 256;
+
     }
 
     bool mouse_scroll(const MouseScroll &e) {
@@ -88,7 +89,7 @@ public:
         auto &camera = unpack_one<Camera>();
         for (auto entity : view<Transform, Sprite>()) {
             auto &transform = unpack<Transform>(entity);
-            transform.position.x -= 0.02f;
+            transform.position.x -= 1.0f / 64;
             auto p = transform.position;
             p.x += transform.scale.x * 0.5f;
             auto pos = world_to_screen(p, camera);
@@ -146,7 +147,7 @@ public:
 
         switch (e.key) {
         case SDLK_w:
-            camera.position.y -= 0.1f;
+            camera.position.y -= .1f;
             break;
         case SDLK_d:
             camera.position.x += 0.1f;
@@ -158,16 +159,16 @@ public:
             camera.position.x -= 0.1f;
             break;
         case SDLK_UP:
-            transform.position.y -= 0.1f;
+            transform.position.y -= 1;
             break;
         case SDLK_RIGHT:
-            transform.position.x += 0.1f;
+            transform.position.x += 1;
             break;
         case SDLK_DOWN:
-            transform.position.y += 0.1f;
+            transform.position.y += 1;
             break;
         case SDLK_LEFT:
-            transform.position.x -= 0.1f;
+            transform.position.x -= 1;
             break;
         case SDLK_q:
             camera.tilesize -= Vector2i{4, 4};
@@ -190,8 +191,8 @@ int main(int argc, char *argv[]) {
     bool ok = two::mount("assets.dat");
     ASSERT(ok);
 
-    two::create_window("Two", 800, 600);
-    two::set_logical_size(800, 600);
+    two::create_window("Two", 896, 504);
+    two::set_logical_size(1280, 720);
     two::make_world<two::Main>();
     return two::run();
 }

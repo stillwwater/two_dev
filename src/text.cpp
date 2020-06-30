@@ -182,7 +182,7 @@ std::shared_ptr<Font> load_font(const std::string &fnt_asset, int page) {
 static inline void missing_glyph(const std::shared_ptr<Font> &font,
                                  uint32_t codepoint) {
     log_warn("Font: '%s' missing character 0x%X",
-             font->name.c_str(), codepoint, codepoint);
+             font->name.c_str(), codepoint);
 }
 
 Vector2i FontRenderer::text_size(const Text &text,
@@ -297,9 +297,9 @@ void FontRenderer::draw(World &world) {
             SDL_Rect src{int(glyph.rect.x), int(glyph.rect.y),
                          int(glyph.rect.w), int(glyph.rect.h)};
 
-            // Text size does depend on tile size. This is to allow text to be
-            // used in overlays and UI elements. If text should act as a sprite
-            //it should probably be a sprite and not dynamic text.
+            // Text size does not depend on tile size. This is to allow text to
+            // be used in overlays and UI elements. If text should act as a
+            // sprite it should probably be a sprite and not dynamic text.
             SDL_Rect dst{int(offset.x + (x + glyph.ox) * transform.scale.x),
                          int(offset.y + glyph.oy * transform.scale.y),
                          int(glyph.rect.w * transform.scale.x),

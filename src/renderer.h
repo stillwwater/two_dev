@@ -40,13 +40,9 @@ struct Camera {
     // The camera will be centered on this position.
     Vector2 position;
 
-    // The tilesize is multiplied by this value when rendering.
-    //
-    //     actual_size = tilesize * e^(scale-1)
-    //
-    // The exponent makes zooming in and out look smoother as it
-    // allows the scale to have the same effect no matter the current
-    // tile size.
+    // How much to scale the world by when rendering. This is useful for
+    // pixel art where sprites are low resolution but you want to render
+    // at a higher resolution for smoother animations.
     float scale;
 
     Camera() {}

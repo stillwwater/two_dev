@@ -32,7 +32,7 @@ namespace two {
 Vector2i world_to_screen(const Vector2 &v, const Camera &camera) {
     int w, h;
     SDL_RenderGetLogicalSize(gfx, &w, &h);
-    auto tilesizef = Vector2(camera.tilesize) * powf(E, camera.scale - 1.0f);
+    auto tilesizef = Vector2(camera.tilesize) * camera.scale;
 
     Vector2i result;
     int ox = int(camera.position.x * tilesizef.x);
@@ -45,7 +45,7 @@ Vector2i world_to_screen(const Vector2 &v, const Camera &camera) {
 Vector2 screen_to_world(const Vector2i &v, const Camera &camera) {
     int w, h;
     SDL_RenderGetLogicalSize(gfx, &w, &h);
-    auto tilesizef = Vector2(camera.tilesize) * powf(E, camera.scale - 1.0f);
+    auto tilesizef = Vector2(camera.tilesize) * camera.scale;
 
     Vector2 result;
     float ox = camera.position.x;
@@ -87,7 +87,8 @@ void Renderer::draw(World &world) {
             "Missing an entity with a Camera component");
 
     auto &camera = world.unpack<Camera>(camera_entity.value());
-    auto tilesizef = Vector2(camera.tilesize) * powf(E, camera.scale - 1.0f);
+    auto cam_scale = camera.scale;
+    auto tilesizef = Vector2(camera.tilesize) * cam_scale;
     auto cam_offset = Vector2i(camera.position * tilesizef);
 
     int screen_w, screen_h;
@@ -163,14 +164,15 @@ void Renderer::draw(World &world) {
                    + screen_wh_2) - cam_offset;
 
         // Scale and offset in pixels
-        auto scale = transform.scale * tilesizef;
-        auto offset = Vector2(ws) - origin * scale;
 
         SDL_Rect src{int(sprite.rect.x), int(sprite.rect.y),
                      int(sprite.rect.w), int(sprite.rect.h)};
 
+        auto scale = transform.scale * Vector2(src.w, src.h) * cam_scale;
+        auto offset = Vector2(ws) - origin * scale;
+
         SDL_Rect dst{int(offset.x), int(offset.y),
-                     int(scale.x),  int(scale.y)};
+                     int(scale.x), int(scale.y)};
 
         SDL_Point center{int(origin.x * dst.w),
                          int(origin.y * dst.h)};
