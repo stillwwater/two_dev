@@ -70,8 +70,8 @@ set(TWO_SRC_MODULES
     src/image.cpp
     src/sprite.h
     src/sprite.cpp
-    src/ui.h
-    src/ui.cpp
+    src/text.h
+    src/text.cpp
     src/two.h
     src/two.cpp
     src/main.cpp

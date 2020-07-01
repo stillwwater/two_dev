@@ -7,18 +7,23 @@
 #include "entity_test.cpp"
 #include "two.h"
 #include "mathf.h"
-#include "renderer.h"
 #include "image.h"
 #include "filesystem.h"
 #include "sprite.h"
-#include "ui.h"
+#include "text.h"
 #include "event.h"
 
 namespace two {
 
 class Main2 : public two::World {
     void load() override {
+        make_system<FontRenderer>();
+        pack(make_entity(), Camera{});
 
+        auto font = load_font("heartbit.fnt");
+        auto hello = make_entity();
+        pack(hello, Transform{{0, 0}});
+        pack(hello, Text{font, "Hello World <3"});
     }
 };
 
@@ -57,13 +62,10 @@ public:
         for (float y = 0; y < 6; ++y) {
             for (float x = 0; x < 9; ++x) {
                 auto sprite = load_sprite("char16.png").value();
-
                 auto ch = make_entity();
                 pack(ch, Transform{{x, y}, {1, 1}, 0});
                 pack(ch, sprite);
-                break;
             }
-            break;
         }
         auto &entity = unpack_one<Sprite>();
         entity.layer = 2;
@@ -197,6 +199,6 @@ int main(int argc, char *argv[]) {
 
     two::create_window("Two", 896, 504);
     two::set_logical_size(1280, 720);
-    two::make_world<two::Main>();
+    two::load_world<two::Main>();
     return two::run();
 }

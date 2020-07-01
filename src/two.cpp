@@ -1,3 +1,21 @@
+// Copyright (c) 2020 stillwwater
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+
 #include "two.h"
 
 #include <chrono>
@@ -15,8 +33,10 @@ EventDispatcher events;
 
 } // internal
 
-static World *world;
-static bool running;
+static World *world = nullptr;
+static World *queued_world = nullptr;
+static World *destroyed_world = nullptr;
+static bool running = 0;
 
 SDL_Window *window;
 SDL_Renderer *gfx;
@@ -43,11 +63,26 @@ void set_logical_size(int width, int height) {
     SDL_RenderSetLogicalSize(gfx, width, height);
 }
 
-// Rename to load_world?
-void make_world(World *w) {
-    destroy_world(world);
-    world = w;
+static void load_world_finish() {
+    // Cleanup previously loaded world
+    delete destroyed_world;
+    destroyed_world = nullptr;
+
+    ASSERT(queued_world != nullptr);
+    world = queued_world;
+    queued_world = nullptr;
+
+    // Load new world
+    world->make_system<BackgroundRenderer>();
     world->load();
+}
+
+void load_world(World *w) {
+    destroy_world(world);
+    queued_world = w;
+    if (world == nullptr) {
+        load_world_finish();
+    }
 }
 
 void destroy_world(World *w) {
@@ -57,7 +92,7 @@ void destroy_world(World *w) {
     w->unload();
     w->destroy_systems();
     clear_event_listeners();
-    delete world; // FIXME
+    destroyed_world = w;
 }
 
 World &active_world() {
@@ -218,6 +253,11 @@ int run() {
     running = true;
 
     for (;;) {
+        if (destroyed_world != nullptr) {
+            // Cleanup previous world and load resources for new world.
+            load_world_finish();
+        }
+
         frame_begin = frame_end;
         frame_end = std::chrono::high_resolution_clock::now();
         auto dt_micro = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -231,6 +271,7 @@ int run() {
             break;
         }
 
+        ASSERT(world != nullptr);
         // World's should handle how update is called on their systems.
         world->update(dt);
 

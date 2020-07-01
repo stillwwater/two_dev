@@ -134,14 +134,30 @@ struct Transform {
     // Uninitialized
     Transform() {}
 
-    Transform(Vector2 position)
+    Transform(const Vector2 &position)
         : position{position}, scale{1.0f, 1.0f}, rotation{0.0f} {}
 
-    Transform(Vector2 position, Vector2 scale)
+    Transform(const Vector2 &position, const Vector2 &scale)
         : position{position}, scale{scale}, rotation{0.0f} {}
 
-    Transform(Vector2 position, Vector2 scale, float rotation)
+    Transform(const Vector2 &position, const Vector2 &scale, float rotation)
         : position{position}, scale{scale}, rotation{rotation} {}
+};
+
+// Similar to the Transform component but the position is given in screen
+// pixels instead of being a world position. This is useful for drawing
+// UI overlays.
+struct PixelTransform {
+    Vector2 position;
+    Vector2 scale;
+
+    PixelTransform() {}
+
+    PixelTransform(const Vector2 &position)
+        : position{position}, scale{1.0f, 1.0f} {}
+
+    PixelTransform(const Vector2 &position, const Vector2 &scale)
+        : position{position}, scale{scale} {}
 };
 
 struct Vector2i {

@@ -84,13 +84,6 @@ Sprite blank_sprite(const Color &color) {
     return sprite;
 }
 
-void SpriteRenderer::load(World &world) {
-    auto *bg = world.get_system<BackgroundRenderer>();
-    if (bg == nullptr) {
-        world.make_system_before<SpriteRenderer, BackgroundRenderer>();
-    }
-}
-
 void SpriteRenderer::sort_sprites(World &world,
                                   const std::vector<Entity> &entities,
                                   std::vector<Entity> &sorted)
@@ -214,6 +207,39 @@ void SpriteRenderer::draw(World &world) {
         SDL_RenderCopyEx(gfx, sprite.texture.get(), &src, &dst,
                          transform.rotation, &center,
                          (SDL_RendererFlip)sprite.flip);
+    }
+}
+
+void OverlayRenderer::draw(World &world) {
+    for (auto entity : world.view<PixelTransform, Sprite>()) {
+        auto &transform = world.unpack<PixelTransform>(entity);
+        auto &sprite = world.unpack<Sprite>(entity);
+
+        SDL_Rect src{int(sprite.rect.x), int(sprite.rect.y),
+                     int(sprite.rect.w), int(sprite.rect.h)};
+
+        SDL_Rect dst{int(transform.position.x),
+                     int(transform.position.y),
+                     int(sprite.rect.w * transform.scale.x),
+                     int(sprite.rect.h * transform.scale.y)};
+
+        if (world.has_component<ShadowEffect>(entity)) {
+            auto &shadow = world.unpack<ShadowEffect>(entity);
+            SDL_SetTextureColorMod(sprite.texture.get(), shadow.color.r,
+                                   shadow.color.g, shadow.color.b);
+
+            SDL_SetTextureAlphaMod(sprite.texture.get(), shadow.color.a);
+            SDL_Rect shadow_dst{int(dst.x + shadow.offset.x),
+                                int(dst.y + shadow.offset.y),
+                                dst.w, dst.h};
+            SDL_RenderCopy(gfx, sprite.texture.get(), &src, &shadow_dst);
+        }
+
+        SDL_SetTextureColorMod(sprite.texture.get(), sprite.color.r,
+                               sprite.color.g, sprite.color.b);
+
+        SDL_SetTextureAlphaMod(sprite.texture.get(), sprite.color.a);
+        SDL_RenderCopy(gfx, sprite.texture.get(), &src, &dst);
     }
 }
 

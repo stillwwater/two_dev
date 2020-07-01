@@ -1,3 +1,21 @@
+// Copyright (c) 2020 stillwwater
+//
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
+//
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+//
+// 1. The origin of this software must not be misrepresented; you must not
+//    claim that you wrote the original software. If you use this software
+//    in a product, an acknowledgment in the product documentation would be
+//    appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+//    misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+
 #ifndef TWO_H
 #define TWO_H
 
@@ -50,17 +68,22 @@ struct Camera {
     // camera background color.
     bool background_is_clear_color;
 
-    Camera() {}
+    Camera()
+        : tilesize{1, 1}
+        , background{119, 194, 217}
+        , position{0, 0}
+        , scale{1.0f}
+        , background_is_clear_color{false} {}
 
     Camera(int tilesize, Color background)
-        : tilesize{Vector2i{tilesize, tilesize}}
+        : tilesize{tilesize, tilesize}
         , background{background}
-        , position{Vector2{0, 0}}
+        , position{0, 0}
         , scale{1.0f}
         , background_is_clear_color{false} {}
 
     Camera(int tilesize, Color background, Vector2 position)
-        : tilesize{Vector2i{tilesize, tilesize}}
+        : tilesize{tilesize, tilesize}
         , background{background}
         , position{position}
         , scale{1.0f}
@@ -74,9 +97,17 @@ struct Camera {
         , background_is_clear_color{false} {}
 };
 
+struct ShadowEffect {
+    Color color;
+    Vector2 offset;
+
+    ShadowEffect() = default;
+    ShadowEffect(const Color &color, const Vector2 &offset)
+        : color{color}, offset{offset} {}
+};
+
 // Basic renderer responsible for clearing the screen. This System is
-// added by other renderers such as the SpriteRenderer if it has not been
-// added.
+// added by default when a world is created.
 class BackgroundRenderer : public System {
 public:
     void draw(World &world) override;
@@ -93,11 +124,11 @@ void set_logical_size(int width, int height);
 
 // Prefer the templated version unless you need to do something different
 // when allocating memory for a World.
-void make_world(World *world);
+void load_world(World *world);
 
 template <class T, typename... Args>
-void make_world(Args &&...args) {
-    make_world(new T(std::forward<Args>(args)...));
+void load_world(Args &&...args) {
+    load_world(new T(std::forward<Args>(args)...));
 }
 
 // Returns the currently loaded world

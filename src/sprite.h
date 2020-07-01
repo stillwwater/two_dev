@@ -135,9 +135,10 @@ Optional<std::vector<Sprite>> load_atlas(const Image *im,
 Optional<std::vector<Sprite>> load_atlas(const Image *im,
                                          float tile_x, float tile_y,
                                          float pad_x = 0, float pad_y = 0);
+
+// Requires a Transform component and a Sprite component
 class SpriteRenderer : public System {
 public:
-    void load(World &world) override;
     void draw(World &world) override;
 
     // Sorts entities with sprite components by the sprite sorting layer.
@@ -148,6 +149,15 @@ public:
 private:
     std::vector<Entity> sprite_buffer;
     std::array<TWO_ENTITY_INT_TYPE, SpriteLayerMax> sort_counts;
+};
+
+// Requires a PixelTransform component and a Sprite component
+// > Note: Does not handle text, use `FontRenderer` for text instead.
+// > This system does not sort sprites by layer like the SpriteRenderer,
+// sprites are drawn in the order they were creted.
+class OverlayRenderer : public System {
+public:
+    void draw(World &world) override;
 };
 
 } // two

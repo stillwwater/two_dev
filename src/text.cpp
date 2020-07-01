@@ -16,7 +16,7 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#include "ui.h"
+#include "text.h"
 
 #include <memory>
 #include <unordered_map>
@@ -27,7 +27,6 @@
 #include "image.h"
 #include "filesystem.h"
 #include "two.h"
-#include "renderer.h"
 
 namespace two {
 
@@ -185,13 +184,6 @@ static inline void missing_glyph(const std::shared_ptr<Font> &font,
              font->name.c_str(), codepoint);
 }
 
-void FontRenderer::load(World &world) {
-    auto *bg = world.get_system<BackgroundRenderer>();
-    if (bg == nullptr) {
-        world.make_system_before<FontRenderer, BackgroundRenderer>();
-    }
-}
-
 Vector2i FontRenderer::text_size(const Text &text, const Vector2 &scale,
                                  const std::vector<bool> &wrap_info) const {
     // line_height is probably negative as it indicates how much to
@@ -345,39 +337,6 @@ void FontRenderer::draw(World &world) {
             // Advance to next character
             x += glyph.advance;
         }
-    }
-}
-
-void OverlayRenderer::draw(World &world) {
-    for (auto entity : world.view<PixelTransform, Sprite>()) {
-        auto &transform = world.unpack<PixelTransform>(entity);
-        auto &sprite = world.unpack<Sprite>(entity);
-
-        SDL_Rect src{int(sprite.rect.x), int(sprite.rect.y),
-                     int(sprite.rect.w), int(sprite.rect.h)};
-
-        SDL_Rect dst{int(transform.position.x),
-                     int(transform.position.y),
-                     int(sprite.rect.w * transform.scale.x),
-                     int(sprite.rect.h * transform.scale.y)};
-
-        if (world.has_component<ShadowEffect>(entity)) {
-            auto &shadow = world.unpack<ShadowEffect>(entity);
-            SDL_SetTextureColorMod(sprite.texture.get(), shadow.color.r,
-                                   shadow.color.g, shadow.color.b);
-
-            SDL_SetTextureAlphaMod(sprite.texture.get(), shadow.color.a);
-            SDL_Rect shadow_dst{int(dst.x + shadow.offset.x),
-                                int(dst.y + shadow.offset.y),
-                                dst.w, dst.h};
-            SDL_RenderCopy(gfx, sprite.texture.get(), &src, &shadow_dst);
-        }
-
-        SDL_SetTextureColorMod(sprite.texture.get(), sprite.color.r,
-                               sprite.color.g, sprite.color.b);
-
-        SDL_SetTextureAlphaMod(sprite.texture.get(), sprite.color.a);
-        SDL_RenderCopy(gfx, sprite.texture.get(), &src, &dst);
     }
 }
 

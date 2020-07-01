@@ -108,23 +108,6 @@ struct Text {
         , wrap{Overflow} {}
 };
 
-// Similar to the Transform component but the position is given in screen
-// pixels instead of being a world position. This is useful for drawing
-// UI overlays.
-struct PixelTransform {
-    Vector2 position;
-    Vector2 scale;
-};
-
-struct ShadowEffect {
-    Color color;
-    Vector2 offset;
-
-    ShadowEffect() = default;
-    ShadowEffect(const Color &color, const Vector2 &offset)
-        : color{color}, offset{offset} {}
-};
-
 // Loads a font from a .fnt (AngelCode BMFont) binary file.
 // Page is which page to use in the font file since a .fnt file can contain
 // more than one font variants.
@@ -148,7 +131,6 @@ std::shared_ptr<Font> load_font_memory(const char *fnt_data,
 // Requires Text component and either a PixelTransform or Transform component.
 class FontRenderer : public System {
 public:
-    void load(World &world) override;
     void draw(World &world) override;
 
     void wrap_text(const Text &text, const Vector2 &scale,
@@ -160,17 +142,6 @@ public:
 private:
     std::vector<bool> wrap_info_cache;
 };
-
-
-// Requires a PixelTransform component and either a Sprite component
-// > Note: Does not handle text, use `FontRenderer` for text instead.
-// > This system does not sort sprites by layer like the SpriteRenderer,
-// sprites are drawn in the order they were creted.
-class OverlayRenderer : public System {
-public:
-    void draw(World &world) override;
-};
-
 
 } // two
 
