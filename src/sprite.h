@@ -26,12 +26,12 @@
 
 #include "SDL.h"
 #include "mathf.h"
+#include "entity.h"
 #include "image.h"
 #include "optional.h"
 
 namespace two {
 
-// TODO: this probably makes sprites too expensive to copy
 using Texture = std::shared_ptr<SDL_Texture>;
 
 using SpriteLayer = uint8_t;
@@ -124,6 +124,21 @@ Optional<std::vector<Sprite>> load_atlas(const Image *im,
 Optional<std::vector<Sprite>> load_atlas(const Image *im,
                                          float tile_x, float tile_y,
                                          float pad_x = 0, float pad_y = 0);
+class SpriteRenderer : public System {
+public:
+    void load(World &world) override;
+    void draw(World &world) override;
+
+    // Sorts entities with sprite components by the sprite sorting layer.
+    // This function assumes `entities` all have a sprite component.
+    void sort_sprites(World &world, const std::vector<Entity> &entities,
+                      std::vector<Entity> &sorted);
+
+private:
+    std::vector<Entity> sprite_buffer;
+    std::array<TWO_ENTITY_INT_TYPE, SpriteLayerMax> sort_counts;
+};
+
 } // two
 
 #endif // TWO_SPRITE_H

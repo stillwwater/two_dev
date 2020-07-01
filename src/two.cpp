@@ -53,15 +53,61 @@ void destroy_world(World *w) {
         return;
     }
     w->unload();
-    for (auto *system : w->systems()) {
-        w->destroy_system(system);
-    }
+    w->destroy_systems();
     clear_event_listeners();
     delete world; // FIXME
 }
 
 World &active_world() {
     return *world;
+}
+
+Vector2i world_to_screen(const Vector2 &v, const Camera &camera) {
+    int w, h;
+    SDL_RenderGetLogicalSize(gfx, &w, &h);
+    auto tilesizef = Vector2(camera.tilesize) * camera.scale;
+
+    Vector2i result;
+    int ox = int(camera.position.x * tilesizef.x);
+    int oy = int(camera.position.y * tilesizef.y);
+    result.x = (int(v.x * tilesizef.x) + w / 2) - ox;
+    result.y = (int(v.y * tilesizef.y) + h / 2) - oy;
+    return result;
+}
+
+Vector2 screen_to_world(const Vector2i &v, const Camera &camera) {
+    int w, h;
+    SDL_RenderGetLogicalSize(gfx, &w, &h);
+    auto tilesizef = Vector2(camera.tilesize) * camera.scale;
+
+    Vector2 result;
+    float ox = camera.position.x;
+    float oy = camera.position.y;
+    result.x = float(v.x - w * 0.5f) / tilesizef.x + ox;
+    result.y = float(v.y - h * 0.5f) / tilesizef.y + oy;
+    return result;
+}
+
+void BackgroundRenderer::draw(World &world) {
+    auto camera_entity = world.view_one<Camera>();
+
+    ASSERTS(camera_entity.has_value,
+            "Missing an entity with a Camera component");
+
+    auto &camera = world.unpack<Camera>(camera_entity.value());
+    if (camera.background_is_clear_color) {
+        SDL_SetRenderDrawColor(gfx, camera.background.r,
+                               camera.background.g, camera.background.b, 255);
+        SDL_RenderClear(gfx);
+        return;
+    }
+    SDL_SetRenderDrawColor(gfx, 0, 0, 0, 255);
+    SDL_RenderClear(gfx);
+    SDL_Rect dst{0, 0, 0, 0};
+    SDL_RenderGetLogicalSize(gfx, &dst.w, &dst.h);
+    SDL_SetRenderDrawColor(gfx, camera.background.r,
+                           camera.background.g, camera.background.b, 255);
+    SDL_RenderFillRect(gfx, &dst);
 }
 
 void clear_event_listeners() {

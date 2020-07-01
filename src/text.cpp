@@ -185,7 +185,14 @@ static inline void missing_glyph(const std::shared_ptr<Font> &font,
              font->name.c_str(), codepoint);
 }
 
-Vector2i FontRenderer::text_size(const Text &text,
+void FontRenderer::load(World &world) {
+    auto *bg = world.get_system<BackgroundRenderer>();
+    if (bg == nullptr) {
+        world.make_system_before<FontRenderer, BackgroundRenderer>();
+    }
+}
+
+Vector2i FontRenderer::text_size(const Text &text, const Vector2 &scale,
                                  const std::vector<bool> &wrap_info) const {
     // line_height is probably negative as it indicates how much to
     // move on the screen but here we only care about the total size
@@ -200,7 +207,7 @@ Vector2i FontRenderer::text_size(const Text &text,
         }
         if (codepoint == '\n' || wrap_info[i]) {
             size.x = std::max(size.x, x);
-            size.y += line_height;
+            size.y += line_height * scale.y;
             x = 0;
             if (codepoint == '\n') continue;
         }
@@ -210,24 +217,23 @@ Vector2i FontRenderer::text_size(const Text &text,
             glyph_it = text.font->glyphs.find('?');
         }
         auto &glyph = glyph_it->second;
-        x += glyph.advance;
+        x += glyph.advance * scale.x;
     }
     size.x = std::max(size.x, x);
     return size;
 }
 
-void FontRenderer::wrap_text(const Text &text,
+void FontRenderer::wrap_text(const Text &text, const Vector2 &scale,
                              std::vector<bool> &result) const {
     result.resize(text.text.size(), false);
     if (text.wrap != Text::Wrap || text.width <= 0) {
         return;
     }
     size_t word_start = 0;
-    int space_left = text.width;
     int word_width = 0;
-
     ASSERT(text.font->glyphs.find(' ') != text.font->glyphs.end());
     int space_width = text.font->glyphs[' '].advance;
+    int space_left = text.width + space_width;
 
     for (size_t i = 0; i < text.text.size(); ++i) {
         uint32_t codepoint = text.text[i];
@@ -247,9 +253,9 @@ void FontRenderer::wrap_text(const Text &text,
         }
 
         auto &glyph = glyph_it->second;
-        // TODO: Scale with transform!
-        space_left -= glyph.advance;
-        word_width += glyph.advance;
+        int advance = glyph.advance * scale.x;
+        space_left -= advance;
+        word_width += advance;
 
         if (space_left < 0) {
             // Word wraps to the next line
@@ -264,17 +270,32 @@ void FontRenderer::wrap_text(const Text &text,
 }
 
 void FontRenderer::draw(World &world) {
+    ShadowEffect shadow;
     auto &camera = world.unpack_one<Camera>();
     for (auto entity : world.view<Transform, Text>()) {
         auto &transform = world.unpack<Transform>(entity);
         auto &text = world.unpack<Text>(entity);
-        wrap_text(text, wrap_info_cache);
+        bool has_shadow = world.has_component<ShadowEffect>(entity);
+
+        if (has_shadow)
+            shadow = world.unpack<ShadowEffect>(entity);
+
+        Vector2i offset;
+        switch (text.screen_space) {
+        case Text::Overlay:
+            offset = Vector2i(transform.position);
+            break;
+        case Text::World:
+            offset = world_to_screen(transform.position, camera);
+            break;
+        default:
+            PANIC("Invalid screen_space for entity #%x", entity);
+        }
+        wrap_text(text, transform.scale, wrap_info_cache);
 
         int x = 0;
-        auto offset = world_to_screen(transform.position, camera);
-
         SDL_SetRenderDrawColor(gfx, 0, 0, 0, 255);
-        SDL_Rect rect{int(offset.x), int(offset.y), 256, 256};
+        SDL_Rect rect{int(offset.x), int(offset.y), 800, 256};
         SDL_RenderDrawRect(gfx, &rect);
 
         for (size_t i = 0; i < text.text.size(); ++i) {
@@ -304,6 +325,23 @@ void FontRenderer::draw(World &world) {
                          int(offset.y + glyph.oy * transform.scale.y),
                          int(glyph.rect.w * transform.scale.x),
                          int(glyph.rect.h * transform.scale.y)};
+
+            if (has_shadow) {
+                SDL_Rect shadow_dst = dst;
+                shadow_dst.x += shadow.offset.x;
+                shadow_dst.y += shadow.offset.y;
+
+                SDL_SetTextureColorMod(text.font->texture, shadow.color.r,
+                                       shadow.color.g, shadow.color.b);
+
+                SDL_SetTextureAlphaMod(text.font->texture, shadow.color.a);
+                SDL_RenderCopy(gfx, text.font->texture, &src, &shadow_dst);
+            }
+
+            SDL_SetTextureColorMod(text.font->texture, text.color.r,
+                                   text.color.g, text.color.b);
+
+            SDL_SetTextureAlphaMod(text.font->texture, text.color.a);
             // Copy glyph texture
             SDL_RenderCopy(gfx, text.font->texture, &src, &dst);
             // Advance to next character

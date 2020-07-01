@@ -25,7 +25,7 @@ class Main2 : public two::World {
 class Main : public two::World {
 public:
     void load() override {
-        make_system<Renderer>();
+        make_system<SpriteRenderer>();
         make_system<FontRenderer>();
 
         bind<KeyDown>(&Main::key_down, this);
@@ -45,12 +45,12 @@ public:
         //two::scancode_down()
 
         auto camera = make_entity();
-        auto &cam = pack(camera, Camera(64, {119, 194, 217}, {3.5, 2.5}));
-        cam.scale = 2;
+        auto &cam = pack(camera, Camera(16, {119, 194, 217}, {0, 0}));
+        cam.scale = 8;
 
         for (float y = 0; y < 6; ++y) {
             for (float x = 0; x < 9; ++x) {
-                auto sprite = load_sprite("char64.png").value();
+                auto sprite = load_sprite("char16.png").value();
 
                 auto ch = make_entity();
                 pack(ch, Transform{{x, y}, {1, 1}, 0});
@@ -62,10 +62,11 @@ public:
         auto &entity = unpack_one<Sprite>();
         entity.layer = 2;
         auto e = make_entity();
-        pack(e, Transform{{0, 0}, {1, 1}});
+        pack(e, Transform{{0, 0}, {3, 3}});
+        pack(e, ShadowEffect{{0, 0, 0, 255}, {0, 4}});
         auto &text = pack(e, Text{font, "Hello World!"});
         text.wrap = Text::Wrap;
-        text.width = 256;
+        text.width = 800;
 
     }
 
@@ -104,8 +105,6 @@ public:
         // TODO: make this a single operation
         // -  key repeat
         // -  clamp camera tilesize
-        // -  zooming with tilezise is no good because it is nonlinear
-        //    camera should have a zoom or size property
         auto camera_entity = view_one<Camera>().value();
         auto &camera = unpack<Camera>(camera_entity);
         auto any_entity = view_one<Transform>().value();

@@ -4,6 +4,7 @@
 #include "SDL.h"
 #include "entity.h"
 #include "event.h"
+#include "image.h"
 
 namespace two {
 
@@ -22,6 +23,64 @@ extern SDL_Window *window;
 // the SDL api if you need to. Will always be valid after init is called
 // unless you modify it.
 extern SDL_Renderer *gfx;
+
+// Camera component
+struct Camera {
+    // How many pixels per world unit.
+    Vector2i tilesize;
+
+    // The color to use when clearing the screen.
+    Color background;
+
+    // Position in world units.
+    // The camera will be centered on this position.
+    Vector2 position;
+
+    // How much to scale the world by when rendering. This is useful for
+    // pixel art where sprites are low resolution but you want to render
+    // at a higher resolution for smoother animations.
+    float scale;
+
+    // Whether to use the camera color to clear the screen instead of
+    // clearing the screen with a black color and then drawing a Rect with
+    // the camera color over the entire screen.
+    //
+    // If this option is enabled and you are rendering at a non native
+    // resolution the pillar box or letter box ('black bars') will have the
+    // camera background color.
+    bool background_is_clear_color;
+
+    Camera() {}
+
+    Camera(int tilesize, Color background)
+        : tilesize{Vector2i{tilesize, tilesize}}
+        , background{background}
+        , position{Vector2{0, 0}}
+        , scale{1.0f}
+        , background_is_clear_color{false} {}
+
+    Camera(int tilesize, Color background, Vector2 position)
+        : tilesize{Vector2i{tilesize, tilesize}}
+        , background{background}
+        , position{position}
+        , scale{1.0f}
+        , background_is_clear_color{false} {}
+
+    Camera(Vector2i tilesize, Color background, Vector2 position)
+        : tilesize{tilesize}
+        , background{background}
+        , position{position}
+        , scale{1.0f}
+        , background_is_clear_color{false} {}
+};
+
+// Basic renderer responsible for clearing the screen. This System is
+// added by other renderers such as the SpriteRenderer if it has not been
+// added.
+class BackgroundRenderer : public System {
+public:
+    void draw(World &world) override;
+};
 
 // Initializes SDL and the filesystem. This should be the first function
 // you call before calling any other function in the engine.
@@ -53,6 +112,13 @@ void destroy_world(World *world);
 
 // Run it! This will fail if you haven't created a window.
 int run();
+
+
+// Convert world to screen (pixel) coordinates.
+Vector2i world_to_screen(const Vector2 &v, const Camera &camera);
+
+// Convert screen to world coordinates.
+Vector2 screen_to_world(const Vector2i &v, const Camera &camera);
 
 // Registers an event handler with the main `EventDisptacher`.
 // Example:

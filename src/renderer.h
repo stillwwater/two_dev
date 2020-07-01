@@ -28,63 +28,6 @@
 
 namespace two {
 
-// Camera component
-struct Camera {
-    // How many pixels per world unit.
-    Vector2i tilesize;
-
-    // The color to use when clearing the screen.
-    Color background;
-
-    // Position in world units.
-    // The camera will be centered on this position.
-    Vector2 position;
-
-    // How much to scale the world by when rendering. This is useful for
-    // pixel art where sprites are low resolution but you want to render
-    // at a higher resolution for smoother animations.
-    float scale;
-
-    Camera() {}
-
-    Camera(int tilesize, Color background)
-        : tilesize{Vector2i{tilesize, tilesize}}
-        , background{background}
-        , position{Vector2{0, 0}}
-        , scale{1.0f} {}
-
-    Camera(int tilesize, Color background, Vector2 position)
-        : tilesize{Vector2i{tilesize, tilesize}}
-        , background{background}
-        , position{position}
-        , scale{1.0f} {}
-
-    Camera(Vector2i tilesize, Color background, Vector2 position)
-        : tilesize{tilesize}
-        , background{background}
-        , position{position}
-        , scale{1.0f} {}
-};
-
-
-Vector2i world_to_screen(const Vector2 &v, const Camera &camera);
-
-Vector2 screen_to_world(const Vector2i &v, const Camera &camera);
-
-class Renderer : public System {
-public:
-    void draw(World &world) override;
-
-    // Sorts entities with sprite components by the sprite sorting layer.
-    // This function assumes `entities` all have a sprite component.
-    void sort_sprites(World &world, const std::vector<Entity> &entities,
-                      std::vector<Entity> &sorted);
-
-private:
-    std::vector<Entity> sprite_buffer;
-    std::array<TWO_ENTITY_INT_TYPE, SpriteLayerMax> sort_counts;
-};
-
 } // two
 
 #endif // TWO_RENDERER_H

@@ -174,7 +174,6 @@ struct Vector2i {
     int length_sqr() const;
 };
 
-
 struct Vector3 {
     float x, y, z;
 

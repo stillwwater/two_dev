@@ -115,6 +115,15 @@ void World::destroy_system(System *system) {
     active_system_types.erase(active_system_types.begin() + index);
 }
 
+void World::destroy_systems() {
+    for (auto *system : active_systems) {
+        system->unload(*this);
+        delete system;
+    }
+    active_systems.clear();
+    active_system_types.clear();
+}
+
 void World::apply_diffs_to_cache(EntityCache &cache) {
     for (const auto &diff : cache.diffs) {
         switch (diff.op) {

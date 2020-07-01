@@ -361,6 +361,12 @@ public:
     template <class T>
     T* make_system(T *system);
 
+    // Adds a system to the world before another system if it exists.
+    // `Before` is an existing system.
+    // `T` is the system to be added before an existing system.
+    template <class Before, class T, typename... Args>
+    T *make_system_before(Args &&...args);
+
     // Returns the first system that matches the given type.
     // System returned will be `nullptr` if it is not found.
     template <class T>
@@ -371,8 +377,13 @@ public:
     template <class T>
     void get_all_systems(std::vector<T *> &systems);
 
-    // System must not be null
+    // System must not be null. Do not destroy a system while the main loop is
+    // running as it could invalidate the system iterator, consider checking
+    // if the system should run or not in the system update loop instead.
     void destroy_system(System *system);
+
+    // Destroy all systems in the world.
+    void destroy_systems();
 
     // Systems returned will not be null.
     inline const std::vector<System *> &systems() { return active_systems; }
@@ -607,6 +618,27 @@ T *World::make_system(T *system) {
     active_systems.push_back(system);
     active_system_types.push_back(type_id<T>());
     system->load(*this);
+    return system;
+}
+
+template <class Before, class T, typename... Args>
+T *World::make_system_before(Args &&...args) {
+    static_assert(std::is_convertible<T *, System *>(),
+                  "Type cannot be converted to a System");
+    ASSERT(active_systems.size() == active_system_types.size());
+
+    auto pos = std::find(active_system_types.begin(),
+                         active_system_types.end(),
+                         type_id<Before>());
+
+    auto *system = new T(std::forward<Args>(args)...);
+    if (pos == active_system_types.end()) {
+        log("not found");
+        return system;
+    }
+    size_t index = std::distance(pos, active_system_types.end()) - 1;
+    active_systems.insert(active_systems.begin() + index, system);
+    active_system_types.insert(pos, type_id<T>());
     return system;
 }
 

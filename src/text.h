@@ -63,6 +63,7 @@ struct Font {
 // A Text component
 struct Text {
     enum WrapMode { Overflow, Wrap };
+    enum ScreenSpace { Overlay, World };
 
     // Text components may share the same font.
     std::shared_ptr<Font> font;
@@ -86,6 +87,12 @@ struct Text {
     // value when rendering.
     WrapMode wrap;
 
+    // Overlay: Draw the text as on overlay in the screen. the position of
+    //          the text should be in pixels.
+    // World: Draw text as if it were an entity in world space like a sprite.
+    //        The position of the text should be in world units.
+    ScreenSpace screen_space;
+
     Text() = default;
 
     Text(const std::shared_ptr<Font> &font, const std::string &text)
@@ -94,7 +101,8 @@ struct Text {
         , color{Color::White}
         , line_spacing{1.0f}
         , width{0.0f}
-        , wrap{Overflow} {}
+        , wrap{Overflow}
+        , screen_space{Overlay} {}
 
     Text(const std::shared_ptr<Font> &font,
          const std::string &text,
@@ -104,7 +112,17 @@ struct Text {
         , color{color}
         , line_spacing{1.0f}
         , width{0.0f}
-        , wrap{Overflow} {}
+        , wrap{Overflow}
+        , screen_space{Overlay} {}
+};
+
+struct ShadowEffect {
+    Color color;
+    Vector2 offset;
+
+    ShadowEffect() = default;
+    ShadowEffect(const Color &color, const Vector2 &offset)
+        : color{color}, offset{offset} {}
 };
 
 // Loads a font from a .fnt (AngelCode BMFont) binary file.
@@ -129,10 +147,13 @@ std::shared_ptr<Font> load_font_memory(const char *fnt_data,
 
 class FontRenderer : public System {
 public:
+    void load(World &world) override;
     void draw(World &world) override;
-    void wrap_text(const Text &text, std::vector<bool> &result) const;
 
-    Vector2i text_size(const Text &text,
+    void wrap_text(const Text &text, const Vector2 &scale,
+                   std::vector<bool> &result) const;
+
+    Vector2i text_size(const Text &text, const Vector2 &scale,
                        const std::vector<bool> &wrap_info) const;
 
 private:
