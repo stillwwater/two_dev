@@ -29,6 +29,7 @@
 #include "entity.h"
 #include "image.h"
 #include "optional.h"
+#include "two.h"
 
 namespace two {
 
@@ -84,7 +85,13 @@ struct Sprite {
 
 inline Texture make_texture(SDL_Texture *texture) {
     return std::shared_ptr<SDL_Texture>(texture, [](SDL_Texture *tex) {
-        SDL_DestroyTexture(tex);
+        // Make sure we still have a graphics device. This is likely to
+        // be false if the texture is a static variable since static
+        // shared pointers go out of scope after the graphics device is
+        // released. Freeing the graphics device will free all textures.
+        if (gfx != nullptr) {
+            SDL_DestroyTexture(tex);
+        }
     });
 }
 
@@ -100,6 +107,10 @@ Sprite make_sprite(const Image *im);
 // allocated for this sprite with the image contents. It is safe to
 // free the image once the sprite is created.
 Sprite make_sprite(const Image *im, const Rect &rect);
+
+// Returns a sprite which uses a single color. All blank sprites share the
+// same texture (a 1x1 px white image).
+Sprite blank_sprite(const Color &color);
 
 // Load an atlas from a asset file. The asset file must exist in an archive
 // added with `filesystem.h mount()`.

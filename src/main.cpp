@@ -11,7 +11,7 @@
 #include "image.h"
 #include "filesystem.h"
 #include "sprite.h"
-#include "text.h"
+#include "ui.h"
 #include "event.h"
 
 namespace two {
@@ -26,6 +26,7 @@ class Main : public two::World {
 public:
     void load() override {
         make_system<SpriteRenderer>();
+        make_system<OverlayRenderer>();
         make_system<FontRenderer>();
 
         bind<KeyDown>(&Main::key_down, this);
@@ -48,6 +49,11 @@ public:
         auto &cam = pack(camera, Camera(16, {119, 194, 217}, {0, 0}));
         cam.scale = 8;
 
+        auto s = make_entity();
+        pack(s, PixelTransform{{100, 100}, {16*8, 16*8}});
+        pack(s, ShadowEffect{Color::Black, {0, 8}});
+        pack(s, blank_sprite(Color::Magenta));
+
         for (float y = 0; y < 6; ++y) {
             for (float x = 0; x < 9; ++x) {
                 auto sprite = load_sprite("char16.png").value();
@@ -62,12 +68,11 @@ public:
         auto &entity = unpack_one<Sprite>();
         entity.layer = 2;
         auto e = make_entity();
-        pack(e, Transform{{0, 0}, {3, 3}});
+        pack(e, PixelTransform{{0, 0}, {3, 3}});
         pack(e, ShadowEffect{{0, 0, 0, 255}, {0, 4}});
         auto &text = pack(e, Text{font, "Hello World!"});
         text.wrap = Text::Wrap;
         text.width = 800;
-
     }
 
     bool mouse_scroll(const MouseScroll &e) {
@@ -86,7 +91,7 @@ public:
         return true;
     }
 
-    void update(float) {
+    void update(float) override {
         auto &camera = unpack_one<Camera>();
         for (auto entity : view<Transform, Sprite>()) {
             auto &transform = unpack<Transform>(entity);

@@ -68,6 +68,22 @@ Sprite make_sprite(const Image *im, const Rect &rect) {
     return Sprite{make_texture(tex), rect};
 }
 
+Sprite blank_sprite(const Color &color) {
+    static Texture blank = nullptr;
+    if (UNLIKELY(blank == nullptr)) {
+        unsigned char pixels[]{255, 255, 255, 255};
+        auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA32,
+                                      SDL_TEXTUREACCESS_STATIC, 1, 1);
+
+        SDL_UpdateTexture(tex, nullptr, (const void *)&pixels, sizeof(pixels));
+        SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+        blank = make_texture(tex);
+    }
+    auto sprite = Sprite{blank, Rect{0, 0, 1, 1}};
+    sprite.color = color;
+    return sprite;
+}
+
 void SpriteRenderer::load(World &world) {
     auto *bg = world.get_system<BackgroundRenderer>();
     if (bg == nullptr) {

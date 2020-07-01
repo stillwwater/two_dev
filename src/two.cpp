@@ -1,5 +1,7 @@
 #include "two.h"
 
+#include <chrono>
+
 #include "SDL.h"
 #include "physfs/physfs.h"
 #include "entity.h"
@@ -210,9 +212,18 @@ bool get_mouse_button(int button) {
 
 int run() {
     ASSERT(window != nullptr);
+
+    auto frame_begin = std::chrono::high_resolution_clock::now();
+    auto frame_end = frame_begin;
     running = true;
-    SDL_Event e;
-    while (running) {
+
+    for (;;) {
+        frame_begin = frame_end;
+        frame_end = std::chrono::high_resolution_clock::now();
+        auto dt_micro = std::chrono::duration_cast<std::chrono::microseconds>(
+            (frame_end - frame_begin)).count();
+        float dt = float(double(dt_micro) * 1e-6);
+
         pump();
 
         if (!running) {
@@ -221,18 +232,19 @@ int run() {
         }
 
         // World's should handle how update is called on their systems.
-        world->update(0);
+        world->update(dt);
 
         // Drawing must be done sequentially so draw is called here for
         // each system.
         for (auto *system : world->systems()) {
             system->draw(*world);
         }
-
         SDL_RenderPresent(gfx);
     }
     SDL_DestroyRenderer(gfx);
+    gfx = nullptr;
     SDL_DestroyWindow(window);
+    window = nullptr;
     SDL_Quit();
     return 0;
 }

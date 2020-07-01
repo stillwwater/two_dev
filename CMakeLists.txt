@@ -66,14 +66,12 @@ set(TWO_SRC_MODULES
     src/filesystem.cpp
     src/entity.h
     src/entity.cpp
-    src/renderer.h
-    src/renderer.cpp
     src/image.h
     src/image.cpp
     src/sprite.h
     src/sprite.cpp
-    src/text.h
-    src/text.cpp
+    src/ui.h
+    src/ui.cpp
     src/two.h
     src/two.cpp
     src/main.cpp

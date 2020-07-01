@@ -16,7 +16,7 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#include "text.h"
+#include "ui.h"
 
 #include <memory>
 #include <unordered_map>
@@ -272,39 +272,37 @@ void FontRenderer::wrap_text(const Text &text, const Vector2 &scale,
 void FontRenderer::draw(World &world) {
     ShadowEffect shadow;
     auto &camera = world.unpack_one<Camera>();
-    for (auto entity : world.view<Transform, Text>()) {
-        auto &transform = world.unpack<Transform>(entity);
+    for (auto entity : world.view<Text>()) {
         auto &text = world.unpack<Text>(entity);
-        bool has_shadow = world.has_component<ShadowEffect>(entity);
 
+        Vector2i offset;
+        Vector2 scale;
+        if (world.has_component<PixelTransform>(entity)) {
+            // Use absolute screen position
+            auto &transform = world.unpack<PixelTransform>(entity);
+            offset = transform.position;
+            scale = transform.scale;
+        } else if (world.has_component<Transform>(entity)) {
+            // Use relative world position
+            auto &transform = world.unpack<Transform>(entity);
+            offset = world_to_screen(transform.position, camera);
+            scale = transform.scale * camera.scale;
+        } else {
+            continue;
+        }
+        bool has_shadow = world.has_component<ShadowEffect>(entity);
         if (has_shadow)
             shadow = world.unpack<ShadowEffect>(entity);
 
-        Vector2i offset;
-        switch (text.screen_space) {
-        case Text::Overlay:
-            offset = Vector2i(transform.position);
-            break;
-        case Text::World:
-            offset = world_to_screen(transform.position, camera);
-            break;
-        default:
-            PANIC("Invalid screen_space for entity #%x", entity);
-        }
-        wrap_text(text, transform.scale, wrap_info_cache);
-
+        wrap_text(text, scale, wrap_info_cache);
         int x = 0;
-        SDL_SetRenderDrawColor(gfx, 0, 0, 0, 255);
-        SDL_Rect rect{int(offset.x), int(offset.y), 800, 256};
-        SDL_RenderDrawRect(gfx, &rect);
-
         for (size_t i = 0; i < text.text.size(); ++i) {
             uint32_t codepoint = text.text[i];
             if (codepoint == '\r') {
                 continue;
             }
             if (codepoint == '\n' || wrap_info_cache[i]) {
-                offset.y += text.font->line_height * transform.scale.y;
+                offset.y += text.font->line_height * scale.y;
                 x = 0;
                 if (codepoint == '\n') continue;
             }
@@ -321,10 +319,10 @@ void FontRenderer::draw(World &world) {
             // Text size does not depend on tile size. This is to allow text to
             // be used in overlays and UI elements. If text should act as a
             // sprite it should probably be a sprite and not dynamic text.
-            SDL_Rect dst{int(offset.x + (x + glyph.ox) * transform.scale.x),
-                         int(offset.y + glyph.oy * transform.scale.y),
-                         int(glyph.rect.w * transform.scale.x),
-                         int(glyph.rect.h * transform.scale.y)};
+            SDL_Rect dst{int(offset.x + (x + glyph.ox) * scale.x),
+                         int(offset.y + glyph.oy * scale.y),
+                         int(glyph.rect.w * scale.x),
+                         int(glyph.rect.h * scale.y)};
 
             if (has_shadow) {
                 SDL_Rect shadow_dst = dst;
@@ -347,6 +345,39 @@ void FontRenderer::draw(World &world) {
             // Advance to next character
             x += glyph.advance;
         }
+    }
+}
+
+void OverlayRenderer::draw(World &world) {
+    for (auto entity : world.view<PixelTransform, Sprite>()) {
+        auto &transform = world.unpack<PixelTransform>(entity);
+        auto &sprite = world.unpack<Sprite>(entity);
+
+        SDL_Rect src{int(sprite.rect.x), int(sprite.rect.y),
+                     int(sprite.rect.w), int(sprite.rect.h)};
+
+        SDL_Rect dst{int(transform.position.x),
+                     int(transform.position.y),
+                     int(sprite.rect.w * transform.scale.x),
+                     int(sprite.rect.h * transform.scale.y)};
+
+        if (world.has_component<ShadowEffect>(entity)) {
+            auto &shadow = world.unpack<ShadowEffect>(entity);
+            SDL_SetTextureColorMod(sprite.texture.get(), shadow.color.r,
+                                   shadow.color.g, shadow.color.b);
+
+            SDL_SetTextureAlphaMod(sprite.texture.get(), shadow.color.a);
+            SDL_Rect shadow_dst{int(dst.x + shadow.offset.x),
+                                int(dst.y + shadow.offset.y),
+                                dst.w, dst.h};
+            SDL_RenderCopy(gfx, sprite.texture.get(), &src, &shadow_dst);
+        }
+
+        SDL_SetTextureColorMod(sprite.texture.get(), sprite.color.r,
+                               sprite.color.g, sprite.color.b);
+
+        SDL_SetTextureAlphaMod(sprite.texture.get(), sprite.color.a);
+        SDL_RenderCopy(gfx, sprite.texture.get(), &src, &dst);
     }
 }
 

@@ -16,8 +16,8 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef TWO_TEXT_H
-#define TWO_TEXT_H
+#ifndef TWO_UI_H
+#define TWO_UI_H
 
 #include <unordered_map>
 #include <string>
@@ -87,12 +87,6 @@ struct Text {
     // value when rendering.
     WrapMode wrap;
 
-    // Overlay: Draw the text as on overlay in the screen. the position of
-    //          the text should be in pixels.
-    // World: Draw text as if it were an entity in world space like a sprite.
-    //        The position of the text should be in world units.
-    ScreenSpace screen_space;
-
     Text() = default;
 
     Text(const std::shared_ptr<Font> &font, const std::string &text)
@@ -101,8 +95,7 @@ struct Text {
         , color{Color::White}
         , line_spacing{1.0f}
         , width{0.0f}
-        , wrap{Overflow}
-        , screen_space{Overlay} {}
+        , wrap{Overflow} {}
 
     Text(const std::shared_ptr<Font> &font,
          const std::string &text,
@@ -112,8 +105,15 @@ struct Text {
         , color{color}
         , line_spacing{1.0f}
         , width{0.0f}
-        , wrap{Overflow}
-        , screen_space{Overlay} {}
+        , wrap{Overflow} {}
+};
+
+// Similar to the Transform component but the position is given in screen
+// pixels instead of being a world position. This is useful for drawing
+// UI overlays.
+struct PixelTransform {
+    Vector2 position;
+    Vector2 scale;
 };
 
 struct ShadowEffect {
@@ -145,6 +145,7 @@ std::shared_ptr<Font> load_font_memory(const char *fnt_data, int page = 0);
 std::shared_ptr<Font> load_font_memory(const char *fnt_data,
                                        const char *image_data);
 
+// Requires Text component and either a PixelTransform or Transform component.
 class FontRenderer : public System {
 public:
     void load(World &world) override;
@@ -160,6 +161,17 @@ private:
     std::vector<bool> wrap_info_cache;
 };
 
+
+// Requires a PixelTransform component and either a Sprite component
+// > Note: Does not handle text, use `FontRenderer` for text instead.
+// > This system does not sort sprites by layer like the SpriteRenderer,
+// sprites are drawn in the order they were creted.
+class OverlayRenderer : public System {
+public:
+    void draw(World &world) override;
+};
+
+
 } // two
 
-#endif // TWO_TEXT_H
+#endif // TWO_UI_H
