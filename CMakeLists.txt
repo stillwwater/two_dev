@@ -43,7 +43,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebIn
         -DTWO_ASSERTIONS
         -DTWO_LOGLEVEL=3
         -DTWO_DEBUG
-        -DTWO_DEBUG_ENTITY
     )
     if (TWO_PARANOIA)
         message(STATUS "TWO_PARANOIA ON")
@@ -74,7 +73,6 @@ set(TWO_SRC_MODULES
     src/text.cpp
     src/two.h
     src/two.cpp
-    src/main.cpp
 )
 
 include_directories(
@@ -82,7 +80,7 @@ include_directories(
     external
 )
 
-add_executable(two ${TWO_SRC_MODULES})
+add_library(two ${TWO_SRC_MODULES})
 
 #
 # Third party libraries

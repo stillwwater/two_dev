@@ -60,9 +60,9 @@
 // Enabled if assertions are enabled.
 #define PANIC(...) ASSERTS(false, __VA_ARGS__)
 #else
-#define ASSERT(exp)
-#define ASSERTS(exp, ...)
-#define PANIC(...)
+#define ASSERT(exp) (void)sizeof(exp)
+#define ASSERTS(exp, ...) (void)sizeof(exp)
+#define PANIC(...) (void)0
 
 #endif // TWO_ASSERTIONS
 
@@ -71,8 +71,8 @@
 #define ASSERT_PARANOIA(exp) ASSERT(exp)
 #define ASSERTS_PARANOIA(exp, ...) ASSERTS(exp, __VA_ARGS__)
 #else
-#define ASSERT_PARANOIA(exp)
-#define ASSERTS_PARANOIA(exp, ...)
+#define ASSERT_PARANOIA(exp) (void)sizeof(exp)
+#define ASSERTS_PARANOIA(exp, ...) (void)sizeof(exp)
 #endif // TWO_PARANOIA
 
 namespace two {

@@ -95,6 +95,10 @@ inline Texture make_texture(SDL_Texture *texture) {
     });
 }
 
+Texture make_texture(const Image *im, const Rect &rect);
+
+Texture make_texture(const Image *im);
+
 // Load a sprite asset from from an asset file.
 Optional<Sprite> load_sprite(const std::string &image_asset);
 
@@ -132,9 +136,9 @@ Optional<std::vector<Sprite>> load_atlas(const Image *im,
 //
 // * `pad_x, pad_y`   How many pixels are used for padding between sprites
 //    in the atlas.
-Optional<std::vector<Sprite>> load_atlas(const Image *im,
-                                         float tile_x, float tile_y,
-                                         float pad_x = 0, float pad_y = 0);
+std::vector<Sprite> load_atlas(const Image *im,
+                               float tile_x, float tile_y,
+                               float pad_x = 0, float pad_y = 0);
 
 // Requires a Transform component and a Sprite component
 class SpriteRenderer : public System {

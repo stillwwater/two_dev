@@ -30,6 +30,34 @@
 
 namespace two {
 
+Texture make_texture(const Image *im, const Rect &rect) {
+    const auto *src = im;
+
+    if (im->get_pixelformat() != Image::RGBA32) {
+        log("Creating texture from non RGBA image.");
+        src = im->convert(Image::RGBA32);
+    }
+
+    auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA32,
+                                  SDL_TEXTUREACCESS_STATIC,
+                                  im->width(), im->height());
+    ASSERT(tex != nullptr);
+
+    SDL_Rect q{int(rect.x), int(rect.y), int(rect.w), int(rect.h)};
+    SDL_UpdateTexture(tex, &q, (const void *)src->pixels(), src->pitch());
+    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+    if (im->get_pixelformat() != Image::RGBA32) {
+        delete src;
+    }
+    return make_texture(tex);
+}
+
+Texture make_texture(const Image *im) {
+    Rect rect{0, 0, float(im->width()), float(im->height())};
+    return make_texture(im, rect);
+}
+
 Optional<Sprite> load_sprite(const std::string &image_asset) {
     auto *im = load_image(image_asset);
     if (im == nullptr) {
@@ -47,25 +75,7 @@ Sprite make_sprite(const Image *im) {
 }
 
 Sprite make_sprite(const Image *im, const Rect &rect) {
-    const auto *src = im;
-
-    if (im->get_pixelformat() != Image::RGBA32) {
-        log("Creating texture from non RGBA image.");
-        src = im->convert(Image::RGBA32);
-    }
-
-    auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA32,
-                                  SDL_TEXTUREACCESS_STATIC,
-                                  im->width(), im->height());
-
-    SDL_Rect q{int(rect.x), int(rect.y), int(rect.w), int(rect.h)};
-    SDL_UpdateTexture(tex, &q, (const void *)src->pixels(), src->pitch());
-    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-
-    if (im->get_pixelformat() != Image::RGBA32) {
-        delete src;
-    }
-    return Sprite{make_texture(tex), rect};
+    return Sprite{make_texture(im, rect), rect};
 }
 
 Sprite blank_sprite(const Color &color) {
@@ -82,6 +92,25 @@ Sprite blank_sprite(const Color &color) {
     auto sprite = Sprite{blank, Rect{0, 0, 1, 1}};
     sprite.color = color;
     return sprite;
+}
+
+std::vector<Sprite> load_atlas(const Image *im,
+                               float tile_x, float tile_y,
+                               float pad_x, float pad_y)
+{
+    auto tex = make_texture(im);
+    float stride_x = tile_x + pad_x;
+    float stride_y = tile_y + pad_y;
+    std::vector<Sprite> sprites;
+    sprites.reserve((im->width() / stride_x) * (im->height() / stride_y));
+
+    for (int y = 0; y < im->height(); y += stride_y) {
+        for (int x = 0; x < im->width(); x += stride_x) {
+            Rect rect{float(x), float(y), tile_x, tile_y};
+            sprites.push_back(Sprite{tex, rect});
+        }
+    }
+    return sprites;
 }
 
 void SpriteRenderer::sort_sprites(World &world,
