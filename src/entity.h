@@ -32,6 +32,7 @@
 
 #include "debug.h"
 #include "optional.h"
+#include "mathf.h"
 
 // Allows size of entity types (identifiers) to be configured
 #ifndef TWO_ENTITY_INT_TYPE
@@ -136,6 +137,12 @@ public:
     // number of entities.
     using PackedSizeType = TWO_ENTITY_INT_TYPE;
 
+    // Approximate amount of memory used when the array is initialized,
+    // used to reduce the amount of initial allocations.
+    static constexpr int MinSize = 2048;
+
+    ComponentArray();
+
     // Returns a component of type T given an Entity.
     // Note: References returned by this function are only guaranteed to be
     // valid during the frame in which the component was read, after
@@ -166,8 +173,8 @@ public:
     size_t count() const { return packed_count; };
 
 private:
-    // All instances of component type T are stored in a contiguous array.
-    std::array<T, TWO_ENTITY_MAX> packed_array;
+    // All instances of component type T are stored in a contiguous vector.
+    std::vector<T> packed_array;
 
     // Maps an Entity id to an index in the packed array.
     std::unordered_map<Entity, PackedSizeType> entity_to_packed;
@@ -674,6 +681,11 @@ void World::get_all_systems(std::vector<T *> &systems) {
 }
 
 template <typename T>
+inline ComponentArray<T>::ComponentArray() {
+    packed_array.reserve(next_pow2(MinSize / sizeof(T)));
+}
+
+template <typename T>
 inline T &ComponentArray<T>::read(Entity entity) {
     ASSERTS(entity_to_packed.find(entity) != entity_to_packed.end(),
             "Missing component for Entity #%x", entity);
@@ -699,14 +711,17 @@ T &ComponentArray<T>::write(Entity entity, const T &component) {
         return packed_array[pos];
     }
 
-    // If this fails something is horribly wrong.
-    ASSERT(packed_count < packed_array.size());
+    ASSERT(packed_count < TWO_ENTITY_MAX);
 
     auto pos = packed_count++;
     entity_to_packed[entity] = pos;
     packed_to_entity[pos] = entity;
 
-    packed_array[pos] = component;
+    if (pos < packed_array.size())
+        packed_array[pos] = component;
+    else
+        packed_array.push_back(component);
+
     return packed_array[pos];
 }
 

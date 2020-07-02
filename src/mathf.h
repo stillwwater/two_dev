@@ -63,6 +63,17 @@ inline float signf(float value) {
     return value >= 0.0f ? 1.0f : -1.0f;
 }
 
+inline uint64_t next_pow2(uint64_t value) {
+    --value;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+    value |= value >> 32;
+    return value + 1;
+}
+
 struct Vector2;
 struct Vector2i;
 struct Vector3;
