@@ -139,7 +139,7 @@ struct Transform {
     Vector2 position;
     Vector2 scale;
 
-    // Rotation on the Z axis in degress
+    // Rotation on the Z axis in degrees
     float rotation;
 
     // Uninitialized

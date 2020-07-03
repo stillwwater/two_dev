@@ -234,4 +234,82 @@ void Image::paste(Image *im, const Vector2i &xy) {
     }
 }
 
+Vector3 color_to_hsv(const Color &rgb) {
+    double h, s, v;
+    auto norm = rgb.normalized();
+    double r = norm.x;
+    double g = norm.y;
+    double b = norm.z;
+
+    double max = fmaxf(r, fmaxf(g, b));
+    double min = fminf(r, fminf(g, b));
+    double chroma = max - min;
+
+    v = max;
+    if (chroma < Epsilon || v <= 0.0) {
+        return Vector3(0.0f, 0.0f, v);
+    }
+    s = chroma / v;
+    if (r >= v)
+        h = 0.0 + (g - b) / chroma;
+    else if (g >= v)
+        h = 2.0 + (b - r) / chroma;
+    else
+        h = 4.0 + (r - g) / chroma;
+    h /= 6.0;
+    return Vector3{float(h), float(s), float(v)};
+}
+
+Color hsv_to_color(const Vector3 &hsv) {
+    double h = clamp01(hsv.x);
+    double s = clamp01(hsv.y);
+    double v = clamp01(hsv.z);
+
+    double h1 = h * 6.0;
+    int h2 = int(h1);
+    double f = h1 - double(h2);
+
+    double x = v * (1.0 - s);
+    double y = v * (1.0 - s * f);
+    double z = v * (1.0 - s * (1.0 - f));
+
+    Vector4 color;
+    color.w = 1.0f;
+
+    switch (h2) {
+    case 0:
+        color.x = v;
+        color.y = z;
+        color.z = x;
+        break;
+    case 1:
+        color.x = y;
+        color.y = v;
+        color.z = x;
+        break;
+    case 2:
+        color.x = x;
+        color.y = v;
+        color.z = z;
+        break;
+    case 3:
+        color.x = x;
+        color.y = y;
+        color.z = v;
+        break;
+    case 4:
+        color.x = z;
+        color.y = x;
+        color.z = v;
+        break;
+    default:
+    case 5:
+        color.x = v;
+        color.y = x;
+        color.z = y;
+        break;
+    }
+    return Color(clamp01(color));
+}
+
 } // two

@@ -85,13 +85,13 @@
 #endif // TWO_PARANOIA
 
 #ifdef TWO_PERFORMANCE_PROFILING
-#define TWO_PROFILE(name) two::PerformanceTimer t__##__LINE__(name)
+#define TWO_PROFILE_EVENT(name) two::PerformanceTimer t__##__LINE__(name)
 
 #define TWO_PROFILE_FUNC() \
     two::PerformanceTimer t__##__LINE__(TWO_PRETTY_FUNCTION)
 
 #else
-#define TWO_PROFILE(name)
+#define TWO_PROFILE_EVENT(name)
 #define TWO_PROFILE_FUNC()
 #endif // TWO_PERFORMANCE_PROFILING
 
@@ -106,35 +106,17 @@ struct TimeStamp {
     int64_t elapsed() const;
 };
 
-// The profiler should be cleared every frame in an update loop.
-// The engine will not clear the profiler so that you have access to profiler
-// data for an entire frame. If you do not clear the profiler entries will
-// accumulate and eventually the profiler will stop adding more data.
-//
-// Starting a session opens a file for appending, the data will be json
-// formatted. The file will only be appended to when `save()` is called.
-//
-// One way to use a profiler is to create a profiler system
-//
-//     class ProfilerSystem : public System {
-//         void update(World &, float) override {
-//             // Here you may also display the profiler data in a GUI
-//             // for example.
-//             two::profiler->save(); // Optionally save to a file
-//             two::profiler->clear(); // Always call this every frame
-//         }
-//     };
-//
-//  You may also use `two::ProfilerSystem` for this.
 class Profiler {
 public:
-    // About 32MB
+    // Max entries that can be in memory, about 32MB.
+    // This limit exists because if the profiler is not cleared every frame
+    // it can very quickly have a lot of entries.
     static constexpr int MaxEntries = 1048576;
 
     std::vector<TimeStamp> entries;
 
     // Append a new entry.
-    inline void append(const TimeStamp &ts) { entries.push_back(ts); }
+    void append(const TimeStamp &ts);
 
     // Should be called every frame.
     inline void clear() { entries.clear(); }

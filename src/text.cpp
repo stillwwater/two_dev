@@ -217,6 +217,7 @@ Vector2i FontRenderer::text_size(const Text &text, const Vector2 &scale,
 
 void FontRenderer::wrap_text(const Text &text, const Vector2 &scale,
                              std::vector<bool> &result) const {
+    TWO_PROFILE_FUNC();
     result.resize(text.text.size(), false);
     if (text.wrap != Text::Wrap || text.width <= 0) {
         return;
@@ -262,6 +263,7 @@ void FontRenderer::wrap_text(const Text &text, const Vector2 &scale,
 }
 
 void FontRenderer::draw(World &world) {
+    TWO_PROFILE_FUNC();
     ShadowEffect shadow;
     auto &camera = world.unpack_one<Camera>();
     for (auto entity : world.view<Text>()) {

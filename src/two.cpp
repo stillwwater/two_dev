@@ -84,6 +84,7 @@ void set_logical_size(int width, int height) {
 }
 
 static void load_world_finish() {
+    TWO_PROFILE_FUNC();
     // Cleanup previously loaded world
     delete destroyed_world;
     destroyed_world = nullptr;
@@ -106,6 +107,7 @@ void load_world(World *w) {
 }
 
 void destroy_world(World *w) {
+    TWO_PROFILE_FUNC();
     if (w == nullptr) {
         return;
     }
@@ -146,6 +148,7 @@ Vector2 screen_to_world(const Vector2i &v, const Camera &camera) {
 }
 
 void BackgroundRenderer::draw(World &world) {
+    TWO_PROFILE_FUNC();
     auto camera_entity = world.view_one<Camera>();
 
     ASSERTS(camera_entity.has_value,
@@ -239,7 +242,7 @@ static void push_event(const SDL_Event &e) {
 }
 
 void pump() {
-    TWO_PROFILE("Pump");
+    TWO_PROFILE_EVENT("Pump");
     SDL_Event e;
 
     while (SDL_PollEvent(&e)) {
@@ -274,7 +277,7 @@ int run() {
     running = true;
 
     for (;;) {
-        TWO_PROFILE("Frame");
+        TWO_PROFILE_EVENT("Frame");
         if (destroyed_world != nullptr) {
             // Cleanup previous world and load resources for new world.
             load_world_finish();
@@ -293,15 +296,15 @@ int run() {
             break;
         }
 
-        ASSERT(world != nullptr);
         {
-            TWO_PROFILE("Update");
+            TWO_PROFILE_EVENT("Update");
+            ASSERT(world != nullptr);
             // World's should handle how update is called on their systems.
             world->update(dt);
         }
 
         {
-            TWO_PROFILE("Draw");
+            TWO_PROFILE_EVENT("Draw");
             // Drawing must be done sequentially so draw is called here for
             // each system.
             for (auto *system : world->systems()) {
@@ -309,13 +312,13 @@ int run() {
             }
         }
         {
-            TWO_PROFILE("Present");
+            TWO_PROFILE_EVENT("Present");
             SDL_RenderPresent(gfx);
         }
 
 #ifdef TWO_PERFORMANCE_PROFILING
         {
-            TWO_PROFILE("Profiler");
+            TWO_PROFILE_EVENT("Profiler");
             ASSERT(profiler_update_callback != nullptr);
             profiler_update_callback();
         }

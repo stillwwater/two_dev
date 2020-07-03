@@ -546,7 +546,7 @@ const std::vector<Entity> &World::view(bool include_inactive) {
     (void)Expand{
         ((void)(mask.set(
             // Component may not have been registered
-            find_or_register_component(type_id<Components>()))), 0)
+            find_or_register_component<Components>())), 0)
         ...
     };
 
@@ -753,15 +753,21 @@ void ComponentArray<T>::remove(Entity entity) {
         // be fast.
         return;
     }
+    // Move the last component into the empty slot to keep the array packed
+    auto last = packed_count - 1;
     auto removed = entity_to_packed[entity];
-    packed_array[removed] = packed_array[packed_count - 1];
+    packed_array[removed] = packed_array[last];
 
-    auto moved_entity = packed_to_entity[packed_count - 1];
+    // Need to know which entity "owns" the component we just moved
+    auto moved_entity = packed_to_entity[last];
     packed_to_entity[removed] = moved_entity;
+
+    // Update the entity that has its component moved to reference
+    // the new location in the packed array
     entity_to_packed[moved_entity] = removed;
 
     entity_to_packed.erase(entity);
-    packed_to_entity.erase(packed_count - 1);
+    packed_to_entity.erase(last);
     --packed_count;
 }
 

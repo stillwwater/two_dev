@@ -243,7 +243,8 @@ void Sokoban::load() {
     make_system<Collision>();
     make_system<Animator>();
 
-    auto &camera = pack(make_entity(), Camera{8, {29, 43, 83, 255}});
+    auto color = hsv_to_color(color_to_hsv(Color{29, 43, 83, 255}));
+    auto &camera = pack(make_entity(), Camera{8, color});
     camera.scale = 8;
 
     load_sprites("sokoban.png");
@@ -272,11 +273,6 @@ void Sokoban::load_room(const std::string &level, int width, int height) {
     auto &room = pack(make_entity(), Room{width, height});
     auto &cam = unpack_one<Camera>();
     cam.position = Vector2{width / 2.0f - 0.5f, height / 2.0f - 0.5f};
-
-    auto throwe = make_entity();
-    pack(throwe, Move{});
-    pack(throwe, Animation{});
-    destroy_entity(throwe);
 
     std::string lvl;
     for (int i = 0; i < len; ++i) {

@@ -151,18 +151,17 @@ Image *load_image(const std::string &image_asset);
 int bytes_per_pixel(Image::PixelFormat pixelformat);
 
 // Convert color to HSV. Returns a vector where the x, y, z component map
-// to the h, s, v components respectively.
+// to the h, s, v components respectively. HSV values will be in range [0, 1].
 //
 // > Note: This conversion is not precise due to rounding errors so the
 // result of `hsv_to_color(color_to_hsv(col))` will not be the same as `col`.
-Vector3 color_to_hsv(Color rgb);
+Vector3 color_to_hsv(const Color &rgb);
 
-// Convert HSV to color.
+// Convert HSV to color. HSV values should be in range [0, 1].
 //
 // > Note: This conversion is not precise due to rounding errors so the
 // result of `hsv_to_color(color_to_hsv(col))` will not be the same as `col`.
-Color hsv_to_color(Vector3 hsv);
-
+Color hsv_to_color(const Vector3 &hsv);
 
 inline Color operator+(const Color &a, const Color &b) {
     Color result = a;
@@ -185,10 +184,10 @@ inline Color operator/(const Color &a, const Color &b) {
 }
 
 inline Color::Color(const Vector4 &rgba) {
-    r = (unsigned char)(clamp01(rgba.x) * 255.0f);
-    g = (unsigned char)(clamp01(rgba.y) * 255.0f);
-    b = (unsigned char)(clamp01(rgba.z) * 255.0f);
-    a = (unsigned char)(clamp01(rgba.w) * 255.0f);
+    r = static_cast<unsigned char>(clamp01(rgba.x) * 255.0f);
+    g = static_cast<unsigned char>(clamp01(rgba.y) * 255.0f);
+    b = static_cast<unsigned char>(clamp01(rgba.z) * 255.0f);
+    a = static_cast<unsigned char>(clamp01(rgba.w) * 255.0f);
 }
 
 inline unsigned char Color::operator[](int i) const {

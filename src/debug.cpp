@@ -26,6 +26,14 @@
 
 namespace two {
 
+void Profiler::append(const TimeStamp &ts) {
+    if (entries.size() < MaxEntries) {
+        entries.push_back(ts);
+        return;
+    }
+    ASSERTS_PARANOIA(false, "Profiler: too many entries");
+}
+
 void Profiler::begin_session(const char *filename) {
     if (fp != nullptr) {
         fclose(fp);
@@ -43,7 +51,7 @@ void Profiler::save() {
         // Prevents overlapping time data in some timeline viewers since it
         // is possible for two timers to start in the exact same microsecond
         // time.
-        const int offset = entries.size() % 4;
+        const int offset = total_entries % 2;
 #else
         const int offset = 0;
 #endif
