@@ -130,6 +130,7 @@ public:
 };
 
 void Collision::update(World &world, float) {
+    TWO_PROFILE_FUNC();
     for (auto e : world.view<Move, Tag, Transform, Sprite>()) {
         auto position = world.unpack<Transform>(e).position;
         auto direction = world.unpack<Move>(e).direction;
@@ -203,6 +204,26 @@ bool Collision::move(World &world,
     return true;
 }
 
+class ProfilerSystem : public System {
+public:
+    void load(World &world) override;
+    void update(World &world, float dt) override;
+    void unload(World &world) override;
+};
+
+void ProfilerSystem::load(World &) {
+    profiler->begin_session("profiler.json");
+}
+
+void ProfilerSystem::update(World &, float) {
+    profiler->save();
+    profiler->clear();
+}
+
+void ProfilerSystem::unload(World &world) {
+    profiler->end_session();
+}
+
 class Sokoban : public World {
 public:
     void load_room(const std::string &level, int width, int height);
@@ -217,6 +238,7 @@ private:
 };
 
 void Sokoban::load() {
+    TWO_PROFILE_FUNC();
     make_system<SpriteRenderer>();
     make_system<Collision>();
     make_system<Animator>();
@@ -360,6 +382,7 @@ bool TitleScreen::key_down(const KeyDown &e) {
 
 int main(int argc, char *argv[]) {
     two::init(argc, argv);
+    two::init_profiler("profile.json");
     two::mount("assets.dat");
     two::create_window("sokoban", 1280, 720);
     two::set_logical_size(1280, 720);

@@ -395,6 +395,9 @@ public:
     // Systems returned will not be null.
     inline const std::vector<System *> &systems() { return active_systems; }
 
+    template <typename Component>
+    inline ComponentType find_or_register_component();
+
 private:
     size_t component_type_index = 0;
     size_t alive_count = 0;
@@ -429,10 +432,11 @@ private:
 
 template <typename Component>
 Component &World::pack(Entity entity, const Component &component) {
-    register_component<Component>();
     auto current_mask = entity_masks[entity];
     auto &mask = entity_masks[entity];
-    auto type = component_types[type_id<Component>()];
+
+    // Component may not have been regisered yet
+    auto type = find_or_register_component<Component>();
     mask.set(type);
 
     auto *a = static_cast<ComponentArray<Component> *>(components[type].get());
@@ -483,10 +487,11 @@ inline bool World::has_component(Entity entity) {
     // This function must work if a component has never been registered,
     // since it's reasonable to check if an entity has a component when
     // a component type has never been added to any entity.
-    if (component_types.find(type_id<Component>()) == component_types.end()) {
+    auto type_it = component_types.find(type_id<Component>());
+    if (type_it == component_types.end()) {
         return false;
     }
-    auto type = component_types[type_id<Component>()];
+    auto type = type_it->second;
     auto *a = static_cast<ComponentArray<Component> *>(components[type].get());
     return a->contains(entity);
 }
@@ -520,17 +525,6 @@ void World::remove_component(Entity entity) {
     entity_masks[entity].reset(type);
 }
 
-template <typename Component>
-void World::register_component() {
-    if (component_types.find(type_id<Component>()) != component_types.end()) {
-        return;
-    }
-    int i = component_type_index++;
-    component_types[type_id<Component>()] = i;
-    components[i] = std::unique_ptr<ComponentArray<Component>>(
-        new ComponentArray<Component>);
-}
-
 inline void World::set_active(Entity entity, bool active) {
     // If active is constant this conditional should be removed when
     // the function is inlined
@@ -543,14 +537,16 @@ inline void World::set_active(Entity entity, bool active) {
 template <typename... Components>
 const std::vector<Entity> &World::view(bool include_inactive) {
     static const ComponentType active_component_t =
-        component_types[type_id<Active>()];
+        find_or_register_component<Active>();
 
     EntityMask mask;
 
     // Need the alias for msvc
     using Expand = int[];
     (void)Expand{
-        ((void)(mask.set(component_types[type_id<Components>()])), 0)
+        ((void)(mask.set(
+            // Component may not have been registered
+            find_or_register_component(type_id<Components>()))), 0)
         ...
     };
 
@@ -561,8 +557,9 @@ const std::vector<Entity> &World::view(bool include_inactive) {
     ASSERTS_PARANOIA(!mask.none(),
         "Use view_all to get entities without filtering");
 
-    if (LIKELY(view_cache.find(mask) != view_cache.end())) {
-        auto &cache = view_cache[mask];
+    auto cache_it = view_cache.find(mask);
+    if (LIKELY(cache_it != view_cache.end())) {
+        auto &cache = cache_it->second;
 
         E_MSG("%s view (%lu) [ops: %lu]",
               mask.to_string().c_str(),
@@ -678,6 +675,28 @@ void World::get_all_systems(std::vector<T *> &systems) {
         }
         systems.push_back(static_cast<T *>(active_systems[i]));
     }
+}
+
+template <typename Component>
+void World::register_component() {
+    // Component must not already exist
+    ASSERT(component_types.find(
+        type_id<Component>()) == component_types.end());
+
+    int i = component_type_index++;
+    component_types.emplace(std::make_pair(type_id<Component>(), i));
+    components[i] = std::unique_ptr<ComponentArray<Component>>(
+        new ComponentArray<Component>);
+}
+
+template <typename Component>
+inline ComponentType World::find_or_register_component() {
+    auto match = component_types.find(type_id<Component>());
+    if (LIKELY(match != component_types.end())) {
+        return match->second;
+    }
+    register_component<Component>();
+    return component_types[type_id<Component>()];
 }
 
 template <typename T>

@@ -20,11 +20,63 @@
 #include <cstdio>
 
 #include "debug.h"
+#include "two.h"
+
+#define TWO_PERFORMANCE_PROFILER_TIMER_HACK 1
 
 namespace two {
 
+void Profiler::begin_session(const char *filename) {
+    if (fp != nullptr) {
+        fclose(fp);
+    }
+    fp = fopen(filename, "w");
+    fprintf(fp, "[");
+}
+
+void Profiler::save() {
+    ASSERTS(fp != nullptr, "No session started by the profiler");
+    for (const auto &entry : entries) {
+        if (total_entries++ > 0) fprintf(fp, ",");
+
+#if TWO_PERFORMANCE_PROFILER_TIMER_HACK
+        // Prevents overlapping time data in some timeline viewers since it
+        // is possible for two timers to start in the exact same microsecond
+        // time.
+        const int offset = entries.size() % 4;
+#else
+        const int offset = 0;
+#endif
+        fprintf(fp, fmt, entry.name, entry.start + offset, entry.elapsed());
+    }
+}
+
+void Profiler::end_session() {
+    fprintf(fp, "]\n");
+    fclose(fp);
+    fp = nullptr;
+}
+
+int64_t TimeStamp::elapsed() const {
+    return end - start;
+}
+
+PerformanceTimer::~PerformanceTimer() {
+    using namespace std::chrono;
+    auto end_tm = high_resolution_clock::now();
+
+    int64_t start = time_point_cast<microseconds>(start_tm)
+        .time_since_epoch().count();
+
+    int64_t end = time_point_cast<microseconds>(end_tm)
+        .time_since_epoch().count();
+
+    ASSERT(two::profiler != nullptr);
+    two::profiler->append(TimeStamp{name, start, end});
+}
+
 std::string sprintfs(const char *fmt, ...) {
-    char buf[256];
+    char buf[512];
     va_list arg_ptr;
     va_start(arg_ptr, fmt);
     vsnprintf(buf, sizeof(buf) - 1, fmt, arg_ptr);

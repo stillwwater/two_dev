@@ -117,6 +117,7 @@ void SpriteRenderer::sort_sprites(World &world,
                                   const std::vector<Entity> &entities,
                                   std::vector<Entity> &sorted)
 {
+    TWO_PROFILE_FUNC();
     sorted.clear();
     sorted.resize(entities.size());
     sort_counts.fill(0);
@@ -141,6 +142,7 @@ void SpriteRenderer::sort_sprites(World &world,
 };
 
 void SpriteRenderer::draw(World &world) {
+    TWO_PROFILE_FUNC();
     // Existence of a camera is checked by the Background Renderer
     auto &camera = world.unpack_one<Camera>();
     auto cam_scale = camera.scale;

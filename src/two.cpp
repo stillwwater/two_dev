@@ -41,9 +41,29 @@ static bool running = 0;
 SDL_Window *window;
 SDL_Renderer *gfx;
 
+std::unique_ptr<Profiler> profiler = nullptr;
+static void (*profiler_update_callback)() = nullptr;
+
 void init(int argc, char *argv[]) {
     PHYSFS_init(argc > 0 ? argv[0] : nullptr);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+}
+
+void init_profiler(void (*profiler_update)()) {
+#ifdef TWO_PERFORMANCE_PROFILING
+    profiler = std::unique_ptr<Profiler>(new Profiler);
+    profiler_update_callback = profiler_update;
+#endif
+}
+
+void init_profiler(const char *filename) {
+#ifdef TWO_PERFORMANCE_PROFILING
+    init_profiler([]() {
+        profiler->save();
+        profiler->clear();
+    });
+    profiler->begin_session(filename);
+#endif
 }
 
 void create_window(const char *title, int width, int height) {
@@ -219,6 +239,7 @@ static void push_event(const SDL_Event &e) {
 }
 
 void pump() {
+    TWO_PROFILE("Pump");
     SDL_Event e;
 
     while (SDL_PollEvent(&e)) {
@@ -253,6 +274,7 @@ int run() {
     running = true;
 
     for (;;) {
+        TWO_PROFILE("Frame");
         if (destroyed_world != nullptr) {
             // Cleanup previous world and load resources for new world.
             load_world_finish();
@@ -272,15 +294,32 @@ int run() {
         }
 
         ASSERT(world != nullptr);
-        // World's should handle how update is called on their systems.
-        world->update(dt);
-
-        // Drawing must be done sequentially so draw is called here for
-        // each system.
-        for (auto *system : world->systems()) {
-            system->draw(*world);
+        {
+            TWO_PROFILE("Update");
+            // World's should handle how update is called on their systems.
+            world->update(dt);
         }
-        SDL_RenderPresent(gfx);
+
+        {
+            TWO_PROFILE("Draw");
+            // Drawing must be done sequentially so draw is called here for
+            // each system.
+            for (auto *system : world->systems()) {
+                system->draw(*world);
+            }
+        }
+        {
+            TWO_PROFILE("Present");
+            SDL_RenderPresent(gfx);
+        }
+
+#ifdef TWO_PERFORMANCE_PROFILING
+        {
+            TWO_PROFILE("Profiler");
+            ASSERT(profiler_update_callback != nullptr);
+            profiler_update_callback();
+        }
+#endif
     }
     SDL_DestroyRenderer(gfx);
     gfx = nullptr;

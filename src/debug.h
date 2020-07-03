@@ -20,8 +20,9 @@
 #define DEBUG_H
 
 #include <string>
-#include <tuple>
+#include <vector>
 #include <cstdlib>
+#include <chrono>
 
 #include "SDL_log.h"
 
@@ -33,6 +34,14 @@
 #define TWO_FMT_PRINTF(a, b)
 #define LIKELY(x) (x)
 #define UNLIKELY(x) (x)
+#endif
+
+#if defined(__clang__) || defined(__GNUC__)
+#define TWO_PRETTY_FUNCTION __PRETTY_FUNCTION__
+#elif defined(MSVC)
+#define TWO_PRETTY_FUNCTION __FUNCSIG__
+#else
+#define TWO_PRETTY_FUNCTION __func__
 #endif
 
 #define TWO_ASSERT_MSG_(exp_, msg_)                                         \
@@ -62,7 +71,7 @@
 #else
 #define ASSERT(exp) (void)sizeof(exp)
 #define ASSERTS(exp, ...) (void)sizeof(exp)
-#define PANIC(...) (void)0
+#define PANIC(...)
 
 #endif // TWO_ASSERTIONS
 
@@ -75,7 +84,103 @@
 #define ASSERTS_PARANOIA(exp, ...) (void)sizeof(exp)
 #endif // TWO_PARANOIA
 
+#ifdef TWO_PERFORMANCE_PROFILING
+#define TWO_PROFILE(name) two::PerformanceTimer t__##__LINE__(name)
+
+#define TWO_PROFILE_FUNC() \
+    two::PerformanceTimer t__##__LINE__(TWO_PRETTY_FUNCTION)
+
+#else
+#define TWO_PROFILE(name)
+#define TWO_PROFILE_FUNC()
+#endif // TWO_PERFORMANCE_PROFILING
+
 namespace two {
+
+// Time is gin in microseconds.
+struct TimeStamp {
+    const char *name;
+    int64_t start, end;
+
+    // Returns elapsed time in microseconds.
+    int64_t elapsed() const;
+};
+
+// The profiler should be cleared every frame in an update loop.
+// The engine will not clear the profiler so that you have access to profiler
+// data for an entire frame. If you do not clear the profiler entries will
+// accumulate and eventually the profiler will stop adding more data.
+//
+// Starting a session opens a file for appending, the data will be json
+// formatted. The file will only be appended to when `save()` is called.
+//
+// One way to use a profiler is to create a profiler system
+//
+//     class ProfilerSystem : public System {
+//         void update(World &, float) override {
+//             // Here you may also display the profiler data in a GUI
+//             // for example.
+//             two::profiler->save(); // Optionally save to a file
+//             two::profiler->clear(); // Always call this every frame
+//         }
+//     };
+//
+//  You may also use `two::ProfilerSystem` for this.
+class Profiler {
+public:
+    // About 32MB
+    static constexpr int MaxEntries = 1048576;
+
+    std::vector<TimeStamp> entries;
+
+    // Append a new entry.
+    inline void append(const TimeStamp &ts) { entries.push_back(ts); }
+
+    // Should be called every frame.
+    inline void clear() { entries.clear(); }
+
+    // Create a file for writting the profile data. A session is only
+    // required if you are writing to a json file with `save()`.
+    void begin_session(const char *filename);
+
+    // Save time stamps to a json file created using `begin_session`.
+    //
+    // > Note: This function does not use the filesystem in `filesystem.h`
+    // since it is designed to be used for debugging only, the native file
+    // system will be used.
+    void save();
+
+    // Writes ending for the json file and closes the file.
+    void end_session();
+
+private:
+    FILE *fp = nullptr;
+
+    int total_entries = 0;
+
+    // Format for each timestamp.
+    const char *fmt = "{"
+                      "\"name\":\"%s\","
+                      "\"cat\":\"PERF\","
+                      "\"ph\":\"X\","
+                      "\"pid\":0,"
+                      "\"tid\":0,"
+                      "\"ts\":%lld,"
+                      "\"dur\":%lld"
+                      "}";
+};
+
+class PerformanceTimer {
+public:
+    PerformanceTimer(const char *name)
+        : name{name}
+        , start_tm{std::chrono::high_resolution_clock::now()} {}
+
+    ~PerformanceTimer();
+private:
+    const char *name;
+    std::chrono::time_point<std::chrono::system_clock> start_tm;
+};
 
 // Use for debugging only. The string will be truncated if it does
 // not fit in the buffer.
@@ -96,8 +201,6 @@ inline void log_warn(const char *fmt, ...) TWO_FMT_PRINTF(1, 2);
 // If logging is disabled then this function should be inlined and
 // optimized away, however arguments passed will still be evaluated.
 inline void log_error(const char *fmt, ...) TWO_FMT_PRINTF(1, 2);
-
-inline void panic(const char *fmt, ...) TWO_FMT_PRINTF(1, 2);
 
 #if TWO_LOGLEVEL >= 3
 inline void log(const char *fmt, ...) {
@@ -130,17 +233,6 @@ inline void log_error(const char *fmt, ...) {
 }
 #else
 inline void log_error(const char *, ...) {}
-#endif
-
-#if TWO_ASSERTIONS
-inline void panic(const char *fmt, ...) {
-    va_list arg_ptr;
-    va_start(arg_ptr, fmt);
-    ASSERTS(false, fmt, arg_ptr);
-    va_end(arg_ptr);
-}
-#else
-inline void panic(const char *, ...) {}
 #endif
 
 } // two

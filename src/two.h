@@ -42,6 +42,11 @@ extern SDL_Window *window;
 // unless you modify it.
 extern SDL_Renderer *gfx;
 
+// An instance of the performance profiler. If `TWO_PERFORMANCE_PROFILING`
+// is enabled an a profiler will be created during `two::init_profiler()`,
+// otherwise this variable will be null.
+extern std::unique_ptr<Profiler> profiler;
+
 // Camera component
 struct Camera {
     // How many pixels per world unit.
@@ -116,6 +121,18 @@ public:
 // Initializes SDL and the filesystem. This should be the first function
 // you call before calling any other function in the engine.
 void init(int argc, char *argv[]);
+
+// Initializes `two::profiler` if `TWO_PERFORMANCE_PROFILING` is enabled.
+// By default the data collected by the profiler will be written to a json
+// file with the name given.
+void init_profiler(const char *filename);
+
+// Initializes `two::profiler` and uses a custom callback that is called
+// at the end of each frame. In this function you may for example display
+// the profiler data to a GUI. You must call `clear()` on the profiler
+// in this function. With this function you will need to call
+// `Profiler::begin_session()` if you will be using `Profiler::save()`.
+void init_profiler(void (*profiler_update)());
 
 // Creates a new window. Must be called after init!
 void create_window(const char *title, int width, int height);
