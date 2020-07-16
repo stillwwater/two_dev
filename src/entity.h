@@ -192,18 +192,6 @@ private:
     size_t packed_count = 0;
 };
 
-// Used to speed up entity lookups
-struct EntityCache {
-    struct Diff {
-        enum Operation { Add, Remove };
-        Entity entity;
-        Operation op;
-    };
-    std::vector<Entity> entities;
-    std::vector<Diff> diffs;
-    std::unordered_set<Entity> lookup;
-};
-
 // A world holds a collection of systems, components and entities.
 class World {
 public:
@@ -363,7 +351,8 @@ public:
     Component &unpack_one(bool include_inactive = false);
 
     // Returns all entities in the world. Entities returned may be inactive.
-    inline const std::vector<Entity> &view_all() { return entities; }
+    // > Note: Calling `destroy_entity()` will invalidate the iterator.
+    inline const std::vector<Entity> &unsafe_view_all() { return entities; }
 
     // Creates and adds a system to the world. This function calls
     // `System::load` to initialize the system.
@@ -413,7 +402,32 @@ public:
     template <typename Component>
     inline ComponentType find_or_register_component();
 
+    // Recycles entity ids so that they can be safely reused. This function
+    // exists to ensure we don't reuse entity ids that are still present in
+    // some cache even though the entity has been destroyed. This can happen
+    // since cache operations are done in a 'lazy' manner.
+    // Called at the end of each frame.
+    void collect_unused_entities();
+
 private:
+    // Used to speed up entity lookups
+    struct EntityCache {
+        struct Diff {
+            enum Operation { Add, Remove };
+            Entity entity;
+            Operation op;
+        };
+        std::vector<Entity> entities;
+        std::vector<Diff> diffs;
+        std::unordered_set<Entity> lookup;
+    };
+
+    struct DestroyedEntity {
+        Entity entity;
+        // Caches that needs to be rebuilt before the entity can be reused
+        std::vector<EntityCache *> caches;
+    };
+
     size_t component_type_index = 0;
     size_t alive_count = 0;
 
@@ -426,7 +440,12 @@ private:
 
     // Contains available entity ids. When creating entities check if this
     // is not empty, otherwise use alive_count + 1 as the new id.
-    std::vector<Entity> destroyed_entities;
+    std::vector<Entity> unused_entities;
+
+    // Contains available entity ids that may still be present in
+    // some cache. Calling `collect_unused_entities()` will remove the
+    // entity from the caches so that the entity can be reused.
+    std::vector<DestroyedEntity> destroyed_entities;
 
     // All alive (but not necessarily active) entities.
     std::vector<Entity> entities;
@@ -572,9 +591,6 @@ const std::vector<Entity> &World::view(bool include_inactive) {
     if (!include_inactive) {
         mask.set(active_component_t);
     }
-
-    ASSERTS_PARANOIA(!mask.none(),
-        "Use view_all to get entities without filtering");
 
     auto cache_it = view_cache.find(mask);
     if (LIKELY(cache_it != view_cache.end())) {

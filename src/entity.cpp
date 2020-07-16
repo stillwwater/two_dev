@@ -55,7 +55,7 @@ Entity World::make_entity(Entity prefab) {
 
 Entity World::make_inactive_entity() {
     Entity entity;
-    if (destroyed_entities.empty()) {
+    if (unused_entities.empty()) {
         ASSERTS(alive_count < TWO_ENTITY_MAX, "Too many entities");
         entity = alive_count;
 
@@ -68,8 +68,8 @@ Entity World::make_inactive_entity() {
             ++alive_count;
         }
     } else {
-        entity = destroyed_entities.back();
-        destroyed_entities.pop_back();
+        entity = unused_entities.back();
+        unused_entities.pop_back();
     }
     entities.push_back(entity);
     ++alive_count;
@@ -113,6 +113,10 @@ void World::destroy_entity(Entity entity) {
         }
     }
     entity_masks[entity] = 0;
+
+    DestroyedEntity destroyed;
+    destroyed.entity = entity;
+
     for (auto &cached : view_cache) {
         auto &lookup = cached.second.lookup;
         if (lookup.find(entity) == lookup.end()) {
@@ -120,6 +124,9 @@ void World::destroy_entity(Entity entity) {
         }
         cached.second.diffs.emplace_back(
             EntityCache::Diff{entity, EntityCache::Diff::Remove});
+
+        // This cache must be rebuilt before the entity can be reused.
+        destroyed.caches.push_back(&cached.second);
 
         E_MSG("%s no longer includes entity #%x (destroyed)",
               cached.first.to_string().c_str(), entity);
@@ -129,10 +136,26 @@ void World::destroy_entity(Entity entity) {
     std::swap(*rem, entities.back());
     entities.pop_back();
 
-    // Make this entity id available again
-    // FIXME: Next entity will have its components
-    // removed because of delayed diff!
-    destroyed_entities.push_back(entity);
+    destroyed_entities.emplace_back(std::move(destroyed));
+}
+
+void World::collect_unused_entities() {
+    if (destroyed_entities.size() == 0) {
+        // Don't want to profile this if it won't be doing anything
+        return;
+    }
+    TWO_PROFILE_FUNC();
+    for (const auto &destroyed : destroyed_entities) {
+        for (auto *cache : destroyed.caches) {
+            // In most cases the cache will have no diffs since if this cache
+            // is viewed every frame by some system it would have been rebuilt
+            // by this point anyway.
+            apply_diffs_to_cache(cache);
+        }
+        // Make entity id available again
+        unused_entities.push_back(destroyed.entity);
+    }
+    destroyed_entities.clear();
 }
 
 void World::destroy_system(System *system) {
@@ -162,6 +185,7 @@ void World::destroy_systems() {
 }
 
 void World::apply_diffs_to_cache(EntityCache *cache) {
+    ASSERT(cache != nullptr);
     for (const auto &diff : cache->diffs) {
         switch (diff.op) {
         case EntityCache::Diff::Add:

@@ -246,7 +246,8 @@ void Sokoban::load() {
     room.set(tf.position, 1, p2);
     room.set(ptf.position, 1, NullEntity);
 
-    remove_component<Player>(player);
+    destroy_entity(player);
+    auto entity = make_entity();
     printf("%d\n", view<Player>().size());
 }
 

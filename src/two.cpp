@@ -319,6 +319,8 @@ int run() {
         }
         TWO_PROFILE_END();
 
+        world->collect_unused_entities();
+
         TWO_PROFILE_BEGIN("Present");
         SDL_RenderPresent(gfx);
         TWO_PROFILE_END();
