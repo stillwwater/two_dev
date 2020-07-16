@@ -44,6 +44,9 @@
 #define TWO_PRETTY_FUNCTION __func__
 #endif
 
+#define UNUSED(exp_) (void)(exp_)
+#define MAYBE_UNUSED(exp_) UNUSED(exp_);
+
 #define TWO_ASSERT_MSG_(exp_, msg_)                                         \
     do {                                                                    \
         if (!(exp_)) {                                                      \
@@ -87,11 +90,16 @@
 #ifdef TWO_PERFORMANCE_PROFILING
 #define TWO_PROFILE_EVENT(name) two::PerformanceTimer t__##__LINE__(name)
 
+#define TWO_PROFILE_BEGIN(name) { TWO_PROFILE_EVENT(name)
+#define TWO_PROFILE_END() }
+
 #define TWO_PROFILE_FUNC() \
     two::PerformanceTimer t__##__LINE__(TWO_PRETTY_FUNCTION)
 
 #else
 #define TWO_PROFILE_EVENT(name)
+#define TWO_PROFILE_BEGIN(name)
+#define TWO_PROFILE_END()
 #define TWO_PROFILE_FUNC()
 #endif // TWO_PERFORMANCE_PROFILING
 

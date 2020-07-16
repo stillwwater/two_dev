@@ -32,10 +32,10 @@
 
 namespace two {
 
-void System::load(World &) {}
-void System::update(World &, float) {}
-void System::draw(World &) {}
-void System::unload(World &) {}
+void System::load(World *) {}
+void System::update(World *, float) {}
+void System::draw(World *) {}
+void System::unload(World *) {}
 
 void World::load() {}
 void World::update(float) {}
@@ -44,6 +44,12 @@ void World::unload() {}
 Entity World::make_entity() {
     auto entity = make_inactive_entity();
     pack(entity, Active{});
+    return entity;
+}
+
+Entity World::make_entity(Entity prefab) {
+    auto entity = make_entity();
+    copy_entity(entity, prefab);
     return entity;
 }
 
@@ -68,6 +74,35 @@ Entity World::make_inactive_entity() {
     entities.push_back(entity);
     ++alive_count;
     return entity;
+}
+
+void World::copy_entity(Entity dst, Entity src) {
+    auto &dst_mask = entity_masks[dst];
+    auto &src_mask = entity_masks[src];
+    for (const auto &type_it : component_types) {
+        if (!src_mask.test(type_it.second)) {
+            continue;
+        }
+        auto &a = components[type_it.second];
+        a->copy(dst, src);
+        dst_mask.set(type_it.second);
+    }
+
+    for (auto &cached : view_cache) {
+        if ((dst_mask & cached.first) != cached.first) {
+            continue;
+        }
+        auto &lookup = cached.second.lookup;
+        if (lookup.find(dst) != lookup.end()) {
+            continue;
+        }
+
+        invalidate_cache(&cached.second,
+            EntityCache::Diff{dst, EntityCache::Diff::Add});
+
+        E_MSG("%s now includes entity #%x (copied from #%x)",
+              mask.to_string().c_str(), dst, src);
+    }
 }
 
 void World::destroy_entity(Entity entity) {
@@ -95,6 +130,8 @@ void World::destroy_entity(Entity entity) {
     entities.pop_back();
 
     // Make this entity id available again
+    // FIXME: Next entity will have its components
+    // removed because of delayed diff!
     destroyed_entities.push_back(entity);
 }
 
@@ -107,7 +144,7 @@ void World::destroy_system(System *system) {
         log_warn("Trying to destroy a system that does not exist");
         return;
     }
-    system->unload(*this);
+    system->unload(this);
     delete system;
 
     auto index = std::distance(active_systems.begin(), pos);
@@ -117,29 +154,29 @@ void World::destroy_system(System *system) {
 
 void World::destroy_systems() {
     for (auto *system : active_systems) {
-        system->unload(*this);
+        system->unload(this);
         delete system;
     }
     active_systems.clear();
     active_system_types.clear();
 }
 
-void World::apply_diffs_to_cache(EntityCache &cache) {
-    for (const auto &diff : cache.diffs) {
+void World::apply_diffs_to_cache(EntityCache *cache) {
+    for (const auto &diff : cache->diffs) {
         switch (diff.op) {
         case EntityCache::Diff::Add:
-            cache.entities.push_back(diff.entity);
-            cache.lookup.insert(diff.entity);
+            cache->entities.push_back(diff.entity);
+            cache->lookup.insert(diff.entity);
             break;
         case EntityCache::Diff::Remove:
             {
-                auto &vec = cache.entities;
+                auto &vec = cache->entities;
                 auto rem = std::find(vec.begin(), vec.end(), diff.entity);
                 ASSERT(rem != vec.end());
 
                 std::swap(*rem, vec.back());
                 vec.pop_back();
-                cache.lookup.erase(diff.entity);
+                cache->lookup.erase(diff.entity);
                 break;
             }
         default:
@@ -147,16 +184,16 @@ void World::apply_diffs_to_cache(EntityCache &cache) {
             break;
         }
     }
-    cache.diffs.clear();
+    cache->diffs.clear();
 }
 
-void World::invalidate_cache(EntityCache &cache, EntityCache::Diff &&diff) {
-    for (const auto &d : cache.diffs) {
+void World::invalidate_cache(EntityCache *cache, EntityCache::Diff &&diff) {
+    for (const auto &d : cache->diffs) {
         if (d.entity == diff.entity && d.op == diff.op) {
             return;
         }
     }
-    cache.diffs.emplace_back(std::move(diff));
+    cache->diffs.emplace_back(std::move(diff));
 }
 
 } // two

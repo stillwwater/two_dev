@@ -113,18 +113,17 @@ std::vector<Sprite> load_atlas(const Image *im,
     return sprites;
 }
 
-void SpriteRenderer::sort_sprites(World &world,
+void SpriteRenderer::sort_sprites(World *world,
                                   const std::vector<Entity> &entities,
-                                  std::vector<Entity> &sorted)
-{
+                                  std::vector<Entity> &sorted) {
     TWO_PROFILE_FUNC();
     sorted.clear();
     sorted.resize(entities.size());
     sort_counts.fill(0);
 
     for (auto entity : entities) {
-        ASSERT(world.has_component<Sprite>(entity));
-        auto &sprite = world.unpack<Sprite>(entity);
+        ASSERT(world->has_component<Sprite>(entity));
+        auto &sprite = world->unpack<Sprite>(entity);
 
         ASSERT(sprite.layer < sort_counts.size());
         ++sort_counts[sprite.layer];
@@ -136,15 +135,15 @@ void SpriteRenderer::sort_sprites(World &world,
 
     for (int i = entities.size() - 1; i >= 0; --i) {
         auto entity = entities[i];
-        auto &sprite = world.unpack<Sprite>(entity);
+        auto &sprite = world->unpack<Sprite>(entity);
         sorted[--sort_counts[sprite.layer]] = entity;
     }
 };
 
-void SpriteRenderer::draw(World &world) {
+void SpriteRenderer::draw(World *world) {
     TWO_PROFILE_FUNC();
     // Existence of a camera is checked by the Background Renderer
-    auto &camera = world.unpack_one<Camera>();
+    auto &camera = world->unpack_one<Camera>();
     auto cam_scale = camera.scale;
     auto tilesizef = Vector2(camera.tilesize) * cam_scale;
     auto cam_offset = Vector2i(camera.position * tilesizef);
@@ -153,13 +152,13 @@ void SpriteRenderer::draw(World &world) {
     SDL_RenderGetLogicalSize(gfx, &screen_w, &screen_h);
     Vector2i screen_wh_2{screen_w / 2, screen_h / 2};
 
-    const auto &entities = world.view<Transform, Sprite>();
+    const auto &entities = world->view<Transform, Sprite>();
     sort_sprites(world, entities, sprite_buffer);
     Vector2 v[4];
 
     for (auto entity : sprite_buffer) {
-        auto &transform = world.unpack<Transform>(entity);
-        auto &sprite = world.unpack<Sprite>(entity);
+        auto &transform = world->unpack<Transform>(entity);
+        auto &sprite = world->unpack<Sprite>(entity);
 
         v[0] = transform.position;
         v[1] = {v[0].x + transform.scale.x, v[0].y};
@@ -241,10 +240,10 @@ void SpriteRenderer::draw(World &world) {
     }
 }
 
-void OverlayRenderer::draw(World &world) {
-    for (auto entity : world.view<PixelTransform, Sprite>()) {
-        auto &transform = world.unpack<PixelTransform>(entity);
-        auto &sprite = world.unpack<Sprite>(entity);
+void OverlayRenderer::draw(World *world) {
+    for (auto entity : world->view<PixelTransform, Sprite>()) {
+        auto &transform = world->unpack<PixelTransform>(entity);
+        auto &sprite = world->unpack<Sprite>(entity);
 
         SDL_Rect src{int(sprite.rect.x), int(sprite.rect.y),
                      int(sprite.rect.w), int(sprite.rect.h)};
@@ -254,8 +253,8 @@ void OverlayRenderer::draw(World &world) {
                      int(sprite.rect.w * transform.scale.x),
                      int(sprite.rect.h * transform.scale.y)};
 
-        if (world.has_component<ShadowEffect>(entity)) {
-            auto &shadow = world.unpack<ShadowEffect>(entity);
+        if (world->has_component<ShadowEffect>(entity)) {
+            auto &shadow = world->unpack<ShadowEffect>(entity);
             SDL_SetTextureColorMod(sprite.texture.get(), shadow.color.r,
                                    shadow.color.g, shadow.color.b);
 

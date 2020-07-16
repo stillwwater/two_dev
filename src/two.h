@@ -115,7 +115,7 @@ struct ShadowEffect {
 // added by default when a world is created.
 class BackgroundRenderer : public System {
 public:
-    void draw(World &world) override;
+    void draw(World *world) override;
 };
 
 // Initializes SDL and the filesystem. This should be the first function
@@ -149,7 +149,7 @@ void load_world(Args &&...args) {
 }
 
 // Returns the currently loaded world
-World &active_world();
+World *active_world();
 
 // Called when loading a new world. Don't call this unless you have a
 // reason to manually unload a scene early.

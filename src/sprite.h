@@ -143,11 +143,11 @@ std::vector<Sprite> load_atlas(const Image *im,
 // Requires a Transform component and a Sprite component
 class SpriteRenderer : public System {
 public:
-    void draw(World &world) override;
+    void draw(World *world) override;
 
     // Sorts entities with sprite components by the sprite sorting layer.
     // This function assumes `entities` all have a sprite component.
-    void sort_sprites(World &world, const std::vector<Entity> &entities,
+    void sort_sprites(World *world, const std::vector<Entity> &entities,
                       std::vector<Entity> &sorted);
 
 private:
@@ -161,7 +161,7 @@ private:
 // sprites are drawn in the order they were creted.
 class OverlayRenderer : public System {
 public:
-    void draw(World &world) override;
+    void draw(World *world) override;
 };
 
 } // two

@@ -65,12 +65,12 @@ namespace two {
 namespace internal {
 
 template <typename T>
-struct type_id_ptr {
-    static const T *const id;
+struct TypeIdInfo {
+    static const T *const value;
 };
 
 template <typename T>
-const T *const type_id_ptr<T>::id = nullptr;
+const T *const TypeIdInfo<T>::value = nullptr;
 
 } // internal
 
@@ -80,7 +80,9 @@ using type_id_t = const void *;
 // Compile time typeid. Note: T must be a value type.
 template <typename T>
 constexpr type_id_t type_id() {
-    return &internal::type_id_ptr<T>::id;
+  return &internal::TypeIdInfo<typename std::remove_const<
+      typename std::remove_volatile<typename std::remove_pointer<
+          typename std::remove_reference<T>::type>::type>::type>::type>::value;
 }
 
 // A unique identifier representing each entity in the world.
@@ -89,7 +91,6 @@ static_assert(std::is_integral<Entity>(), "Entity must be integral");
 
 // A unique identifier represeting each type of component.
 using ComponentType = TWO_COMPONENT_INT_TYPE;
-
 static_assert(std::is_integral<ComponentType>(),
               "ComponentType must be integral");
 
@@ -100,7 +101,9 @@ static_assert(std::is_integral<ComponentType>(),
 // instead.
 using EntityMask = std::bitset<TWO_COMPONENT_MAX>;
 
-const Entity NullEntity = 0;
+// Used to represent an entity that has no value. The NullEntity exists
+// in the world but has no components.
+constexpr Entity NullEntity = 0;
 
 // An empty component that is used to indicate whther the entity it is
 // attached to is currently active.
@@ -112,17 +115,17 @@ class World;
 class System {
 public:
     virtual ~System() = default;
-    virtual void load(World &world);
-    virtual void update(World &world, float dt);
-    virtual void draw(World &world);
-    virtual void unload(World &world);
+    virtual void load(World *world);
+    virtual void update(World *world, float dt);
+    virtual void draw(World *world);
+    virtual void unload(World *world);
 };
 
 class IComponentArray {
 public:
     virtual ~IComponentArray() = default;
     virtual void remove(Entity entity) = 0;
-    virtual const uint8_t *read_data(Entity entity, size_t &out_size) = 0;
+    virtual void copy(Entity dst, Entity src) = 0;
 };
 
 // Manages all instances of a component type and keeps track of which
@@ -153,7 +156,7 @@ public:
     // prefer using the non virtual `read`. The memory returned is only
     // guaranteed to be valid for the duration of the frame where the function
     // was called. Returns nullptr if entity does not have the component.
-    const uint8_t *read_data(Entity entity, size_t &out_size) override;
+    //const uint8_t *read_data(Entity entity, size_t &out_size) override;
 
     // Set a component in the packed array and associate an entity with the
     // component.
@@ -165,7 +168,9 @@ public:
     //
     // > References returned by `read` may become invalid after remove is
     // called.
-    void remove(Entity) override;
+    void remove(Entity entity) override;
+
+    void copy(Entity dst, Entity src) override;
 
     inline bool contains(Entity entity) const;
 
@@ -187,6 +192,7 @@ private:
     size_t packed_count = 0;
 };
 
+// Used to speed up entity lookups
 struct EntityCache {
     struct Diff {
         enum Operation { Add, Remove };
@@ -231,6 +237,9 @@ public:
     // Creates a new entity in the world with an Active component.
     Entity make_entity();
 
+    // Creates a new entity and copies components from another.
+    Entity make_entity(Entity prefab);
+
     // Creates a new inactive entity in the world. The entity will need
     // to have active set before it can be used by systems.
     // Useful to create entties without initializing them.
@@ -238,8 +247,14 @@ public:
     // components added to them.
     Entity make_inactive_entity();
 
+    // Copy components from entity `src` to entity `dst`.
+    void copy_entity(Entity dst, Entity src);
+
     // Destroys an entity and all of its components.
     void destroy_entity(Entity entity);
+
+    // Returns the entity mask
+    inline const EntityMask &get_mask(Entity entity) const;
 
     // Adds or replaces a component and associates an entity with the
     // component.
@@ -426,9 +441,13 @@ private:
 
     std::unordered_map<type_id_t, ComponentType> component_types;
 
-    void apply_diffs_to_cache(EntityCache &cache);
-    void invalidate_cache(EntityCache &cache, EntityCache::Diff &&diff);
+    void apply_diffs_to_cache(EntityCache *cache);
+    void invalidate_cache(EntityCache *cache, EntityCache::Diff &&diff);
 };
+
+inline const EntityMask &World::get_mask(Entity entity) const {
+    return entity_masks[entity];
+}
 
 template <typename Component>
 Component &World::pack(Entity entity, const Component &component) {
@@ -462,7 +481,7 @@ Component &World::pack(Entity entity, const Component &component) {
             continue;
         }
 
-        invalidate_cache(cached.second,
+        invalidate_cache(&cached.second,
             EntityCache::Diff{entity, EntityCache::Diff::Add});
 
         E_MSG("%s now includes entity #%x",
@@ -516,7 +535,7 @@ void World::remove_component(Entity entity) {
             // Entity has already been removed from cache
             continue;
         }
-        invalidate_cache(cached.second,
+        invalidate_cache(&cached.second,
             EntityCache::Diff{entity, EntityCache::Diff::Remove});
 
         E_MSG("%s no longer includes entity #%x",
@@ -569,7 +588,7 @@ const std::vector<Entity> &World::view(bool include_inactive) {
         if (LIKELY(cache.diffs.empty())) {
             return cache.entities;
         }
-        apply_diffs_to_cache(cache);
+        apply_diffs_to_cache(&cache);
         return cache.entities;
     }
     E_MSG("%s view (initial cache build)", mask.to_string().c_str());
@@ -621,7 +640,7 @@ T *World::make_system(T *system) {
 
     active_systems.push_back(system);
     active_system_types.push_back(type_id<T>());
-    system->load(*this);
+    system->load(this);
     return system;
 }
 
@@ -712,16 +731,6 @@ inline T &ComponentArray<T>::read(Entity entity) {
 }
 
 template <typename T>
-const uint8_t *ComponentArray<T>::read_data(Entity entity, size_t &out_size) {
-    if (entity_to_packed.find(entity) == entity_to_packed.end()) {
-        out_size = 0;
-        return nullptr;
-    }
-    out_size = sizeof(T);
-    return (uint8_t *)&packed_array[entity_to_packed[entity]];
-}
-
-template <typename T>
 T &ComponentArray<T>::write(Entity entity, const T &component) {
     if (entity_to_packed.find(entity) != entity_to_packed.end()) {
         // Replace component
@@ -769,6 +778,11 @@ void ComponentArray<T>::remove(Entity entity) {
     entity_to_packed.erase(entity);
     packed_to_entity.erase(last);
     --packed_count;
+}
+
+template <typename T>
+void ComponentArray<T>::copy(Entity dst, Entity src) {
+    write(dst, read(src));
 }
 
 template <typename T>

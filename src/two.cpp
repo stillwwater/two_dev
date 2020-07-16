@@ -42,7 +42,10 @@ SDL_Window *window;
 SDL_Renderer *gfx;
 
 std::unique_ptr<Profiler> profiler = nullptr;
+
+#if TWO_PERFORMANCE_PROFILING
 static void (*profiler_update_callback)() = nullptr;
+#endif
 
 void init(int argc, char *argv[]) {
     PHYSFS_init(argc > 0 ? argv[0] : nullptr);
@@ -53,6 +56,8 @@ void init_profiler(void (*profiler_update)()) {
 #ifdef TWO_PERFORMANCE_PROFILING
     profiler = std::unique_ptr<Profiler>(new Profiler);
     profiler_update_callback = profiler_update;
+#else
+    UNUSED(profiler_update);
 #endif
 }
 
@@ -63,6 +68,8 @@ void init_profiler(const char *filename) {
         profiler->clear();
     });
     profiler->begin_session(filename);
+#else
+    UNUSED(filename);
 #endif
 }
 
@@ -117,8 +124,9 @@ void destroy_world(World *w) {
     destroyed_world = w;
 }
 
-World &active_world() {
-    return *world;
+World *active_world() {
+    ASSERT(world != nullptr);
+    return world;
 }
 
 Vector2i world_to_screen(const Vector2 &v, const Camera &camera) {
@@ -147,14 +155,14 @@ Vector2 screen_to_world(const Vector2i &v, const Camera &camera) {
     return result;
 }
 
-void BackgroundRenderer::draw(World &world) {
+void BackgroundRenderer::draw(World *world) {
     TWO_PROFILE_FUNC();
-    auto camera_entity = world.view_one<Camera>();
+    auto camera_entity = world->view_one<Camera>();
 
     ASSERTS(camera_entity.has_value,
             "Missing an entity with a Camera component");
 
-    auto &camera = world.unpack<Camera>(camera_entity.value());
+    auto &camera = world->unpack<Camera>(camera_entity.value());
     if (camera.background_is_clear_color) {
         SDL_SetRenderDrawColor(gfx, camera.background.r,
                                camera.background.g, camera.background.b, 255);
@@ -270,7 +278,7 @@ bool get_mouse_button(int button) {
 }
 
 int run() {
-    ASSERT(window != nullptr);
+    ASSERT(window != nullptr && gfx != nullptr);
 
     auto frame_begin = std::chrono::high_resolution_clock::now();
     auto frame_end = frame_begin;
@@ -289,6 +297,7 @@ int run() {
             (frame_end - frame_begin)).count();
         float dt = float(double(dt_micro) * 1e-6);
 
+        // Handle events
         pump();
 
         if (!running) {
@@ -296,37 +305,34 @@ int run() {
             break;
         }
 
-        {
-            TWO_PROFILE_EVENT("Update");
-            ASSERT(world != nullptr);
-            // World's should handle how update is called on their systems.
-            world->update(dt);
-        }
+        TWO_PROFILE_BEGIN("Update");
+        ASSERT(world != nullptr);
+        // World's should handle how update is called on their systems.
+        world->update(dt);
+        TWO_PROFILE_END();
 
-        {
-            TWO_PROFILE_EVENT("Draw");
-            // Drawing must be done sequentially so draw is called here for
-            // each system.
-            for (auto *system : world->systems()) {
-                system->draw(*world);
-            }
+        TWO_PROFILE_BEGIN("Draw");
+        // Drawing must be done sequentially so draw is called here for
+        // each system.
+        for (auto *system : world->systems()) {
+            system->draw(world);
         }
-        {
-            TWO_PROFILE_EVENT("Present");
-            SDL_RenderPresent(gfx);
-        }
+        TWO_PROFILE_END();
+
+        TWO_PROFILE_BEGIN("Present");
+        SDL_RenderPresent(gfx);
+        TWO_PROFILE_END();
 
 #ifdef TWO_PERFORMANCE_PROFILING
-        {
-            TWO_PROFILE_EVENT("Profiler");
-            ASSERT(profiler_update_callback != nullptr);
-            profiler_update_callback();
-        }
+        TWO_PROFILE_BEGIN("Profiler");
+        ASSERT(profiler_update_callback != nullptr);
+        profiler_update_callback();
+        TWO_PROFILE_END();
 #endif
     }
     SDL_DestroyRenderer(gfx);
-    gfx = nullptr;
     SDL_DestroyWindow(window);
+    gfx = nullptr;
     window = nullptr;
     SDL_Quit();
     return 0;

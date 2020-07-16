@@ -34,7 +34,7 @@ static const std::unordered_map<char, Type> token_to_type{
     {'O', Enitty_Target}
 };
 
-struct Player {};
+struct Player {int x;};
 
 struct Target {};
 
@@ -92,20 +92,20 @@ public:
     // This state can be in a component in an entity instead,
     // this is to show later how to find a system in the world.
     bool active = false;
-    void update(World &world, float dt) override;
+    void update(World *world, float dt) override;
 };
 
-void Animator::update(World &world, float dt) {
-    for (auto e : world.view<Animation, Transform>()) {
-        auto &transform = world.unpack<Transform>(e);
-        auto &animation = world.unpack<Animation>(e);
+void Animator::update(World *world, float dt) {
+    for (auto e : world->view<Animation, Transform>()) {
+        auto &transform = world->unpack<Transform>(e);
+        auto &animation = world->unpack<Animation>(e);
 
         if (animation.lerp_time >= animation.MaxLerpTime) {
             animation.lerp_time = animation.MaxLerpTime;
             transform.position = animation.target;
-            world.remove_component<Animation>(e);
+            world->remove_component<Animation>(e);
 
-            if (world.unpack_one<Room>().win) {
+            if (world->unpack_one<Room>().win) {
                 // This is probably not the best place to do this...
                 emit(WinEvent{});
             }
@@ -122,20 +122,20 @@ void Animator::update(World &world, float dt) {
 
 class Collision : public System {
 public:
-    void update(World &world, float dt) override;
+    void update(World *world, float dt) override;
 
-    bool move(World &world,
+    bool move(World *world,
               const Vector2 &position,
               const Vector2 &direction) const;
 };
 
-void Collision::update(World &world, float) {
+void Collision::update(World *world, float) {
     TWO_PROFILE_FUNC();
-    for (auto e : world.view<Move, Tag, Transform, Sprite>()) {
-        auto position = world.unpack<Transform>(e).position;
-        auto direction = world.unpack<Move>(e).direction;
-        auto &sprite = world.unpack<Sprite>(e);
-        world.remove_component<Move>(e);
+    for (auto e : world->view<Move, Tag, Transform, Sprite>()) {
+        auto position = world->unpack<Transform>(e).position;
+        auto direction = world->unpack<Move>(e).direction;
+        auto &sprite = world->unpack<Sprite>(e);
+        world->remove_component<Move>(e);
         move(world, position, direction);
 
         if (direction.x < 0 && sprite.flip == Sprite::FlipNone) {
@@ -148,10 +148,10 @@ void Collision::update(World &world, float) {
     }
 
     // Check for the win condition
-    auto &room = world.unpack_one<Room>();
+    auto &room = world->unpack_one<Room>();
     room.win = true;
-    for (auto e : world.view<Transform, Target>()) {
-        auto position = world.unpack<Transform>(e).position;
+    for (auto e : world->view<Transform, Target>()) {
+        auto position = world->unpack<Transform>(e).position;
         auto crate = room.at(position, 1);
         if (crate == NullEntity) {
             // Nothing on the target
@@ -159,7 +159,7 @@ void Collision::update(World &world, float) {
             break;
         }
         // Something is on the target, make sure it's a crate
-        auto &tag = world.unpack<Tag>(crate);
+        auto &tag = world->unpack<Tag>(crate);
         if (tag.type != Entity_Crate) {
             room.win = false;
             break;
@@ -167,17 +167,16 @@ void Collision::update(World &world, float) {
     }
 }
 
-bool Collision::move(World &world,
+bool Collision::move(World *world,
                      const Vector2 &position,
-                     const Vector2 &direction) const
-{
+                     const Vector2 &direction) const {
     auto target = position + direction;
-    auto &room = world.unpack_one<Room>();
+    auto &room = world->unpack_one<Room>();
     auto entity = room.top(position);
     auto neighbor = room.top(target);
 
-    auto entity_tag = world.unpack<Tag>(entity);
-    auto neighbor_tag = world.unpack<Tag>(neighbor);
+    auto entity_tag = world->unpack<Tag>(entity);
+    auto neighbor_tag = world->unpack<Tag>(neighbor);
 
     if (entity_tag.collision_layer == 0) {
         // Background
@@ -200,28 +199,8 @@ bool Collision::move(World &world,
 
     room.set(position, 1, NullEntity);
     room.set(target, 1, entity);
-    world.pack(entity, Animation{target, 0.0f});
+    world->pack(entity, Animation{target, 0.0f});
     return true;
-}
-
-class ProfilerSystem : public System {
-public:
-    void load(World &world) override;
-    void update(World &world, float dt) override;
-    void unload(World &world) override;
-};
-
-void ProfilerSystem::load(World &) {
-    profiler->begin_session("profiler.json");
-}
-
-void ProfilerSystem::update(World &, float) {
-    profiler->save();
-    profiler->clear();
-}
-
-void ProfilerSystem::unload(World &world) {
-    profiler->end_session();
 }
 
 class Sokoban : public World {
@@ -243,8 +222,7 @@ void Sokoban::load() {
     make_system<Collision>();
     make_system<Animator>();
 
-    auto color = hsv_to_color(color_to_hsv(Color{29, 43, 83, 255}));
-    auto &camera = pack(make_entity(), Camera{8, color});
+    auto &camera = pack(make_entity(), Camera{8, {29, 43, 83, 255}});
     camera.scale = 8;
 
     load_sprites("sokoban.png");
@@ -252,6 +230,24 @@ void Sokoban::load() {
 
     bind<KeyDown>(&Sokoban::key_down, this);
     bind<WinEvent>(&Sokoban::win, this);
+
+    auto player = view_one<Player>().value();
+    auto ptf = unpack<Transform>(player);
+    auto p2 = make_entity(player);
+    auto &tf = unpack<Transform>(p2);
+    auto &sp = unpack<Sprite>(p2);
+    auto &t = unpack<Tag>(p2);
+    auto &pp = unpack<Player>(p2);
+    auto &a = unpack<Active>(p2);
+    pack(p2, Player{});
+    tf.position = Vector2::one();
+
+    auto &room = unpack_one<Room>();
+    room.set(tf.position, 1, p2);
+    room.set(ptf.position, 1, NullEntity);
+
+    remove_component<Player>(player);
+    printf("%d\n", view<Player>().size());
 }
 
 void Sokoban::load_sprites(const std::string &filename) {
@@ -340,7 +336,7 @@ bool Sokoban::win(const WinEvent &) {
 
 void Sokoban::update(float dt) {
     for (auto *system : systems()) {
-        system->update(*this, dt);
+        system->update(this, dt);
     }
 }
 
@@ -352,8 +348,8 @@ public:
 
 void TitleScreen::load() {
     auto font_renderer = make_system<FontRenderer>();
-    auto &camera = pack(make_entity(), Camera{1, Color::Black});
     auto font = load_font("heartbit.fnt");
+    pack(make_entity(), Camera{1, Color::Black});
 
     auto title = make_entity();
     auto &tf = pack(title, PixelTransform{{0, 0}, {3, 3}});
@@ -368,7 +364,7 @@ void TitleScreen::load() {
     bind<KeyDown>(&TitleScreen::key_down, this);
 }
 
-bool TitleScreen::key_down(const KeyDown &e) {
+bool TitleScreen::key_down(const KeyDown &) {
     load_world<Sokoban>();
     return true;
 }
@@ -379,9 +375,17 @@ bool TitleScreen::key_down(const KeyDown &e) {
 int main(int argc, char *argv[]) {
     two::init(argc, argv);
     two::init_profiler("profile.json");
+
+    // Mount readonly filesystem
     two::mount("assets.dat");
+
     two::create_window("sokoban", 1280, 720);
+    // Optional if it's the same as the window size
     two::set_logical_size(1280, 720);
+
+    // Load first world
     two::load_world<two::examples::TitleScreen>();
+
+    // Main loop
     return two::run();
 }

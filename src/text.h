@@ -131,7 +131,7 @@ std::shared_ptr<Font> load_font_memory(const char *fnt_data,
 // Requires Text component and either a PixelTransform or Transform component.
 class FontRenderer : public System {
 public:
-    void draw(World &world) override;
+    void draw(World *world) override;
 
     void wrap_text(const Text &text, const Vector2 &scale,
                    std::vector<bool> &result) const;

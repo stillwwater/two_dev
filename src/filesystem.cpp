@@ -70,12 +70,14 @@ bool File::open(FileMode mode, bool buffered) {
     if (fp == nullptr) {
         const char *err = PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode());
         PANIC("Could not open file '%s' (%s)", name, err);
+        MAYBE_UNUSED(err);
         return false;
     }
 
     if (buffered && PHYSFS_setBuffer(fp, File::BufferSize) == 0) {
         const char *err = PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode());
         PANIC("Failed to create buffer for file '%s' (%s)", name, err);
+        MAYBE_UNUSED(err);
         return false;
     }
 
@@ -84,6 +86,10 @@ bool File::open(FileMode mode, bool buffered) {
 }
 
 bool File::close() {
+    if (!is_open()) {
+        // File is already closed
+        return true;
+    }
     if (fp == nullptr || !PHYSFS_close(fp)) {
         return false;
     }
@@ -94,6 +100,7 @@ bool File::close() {
 
 int64_t File::read(char *buffer, int64_t length) {
     if (!is_open() || mode != FileMode::Read) {
+        PANIC("File '%s' not opened for reading", filename.c_str());
         return -1;
     }
     int64_t total_size = size();
@@ -121,54 +128,41 @@ char *File::read_all() {
 
 bool File::write(const char *buffer, int64_t length) {
     if (!is_open() || (mode != FileMode::Write && mode != FileMode::Append)) {
+        PANIC("File '%s' not opened for writing", filename.c_str());
         return false;
     }
     if (length < 0) {
+        PANIC("Invalid file length");
         return false;
     }
     return PHYSFS_writeBytes(fp, buffer, length) == length;
 }
 
 int64_t File::size() {
-    if (!is_open()) {
-        return -1;
-    }
+    ASSERT(is_open());
     return PHYSFS_fileLength(fp);
 }
 
 bool File::eof() {
-    if (!is_open()) {
-        return -1;
-    }
+    ASSERT(is_open());
     return PHYSFS_eof(fp);
 }
 
 int64_t File::tell() {
-    if (!is_open()) {
-        return -1;
-    }
+    ASSERT(is_open());
     return PHYSFS_tell(fp);
 }
 
 bool File::seek(int64_t pos) {
-    if (!is_open()) {
-        return false;
-    }
-    return PHYSFS_seek(fp, pos) != 0;
+    return is_open() && PHYSFS_seek(fp, pos) != 0;
 }
 
 bool File::skip(int64_t size) {
-    if (!is_open()) {
-        return false;
-    }
-    return seek(tell() + size);
+    return is_open() && seek(tell() + size);
 }
 
 bool File::flush() {
-    if (!is_open()) {
-        return false;
-    }
-    return PHYSFS_flush(fp) != 0;
+    return is_open() && PHYSFS_flush(fp) != 0;
 }
 
 bool File::is_open() const {

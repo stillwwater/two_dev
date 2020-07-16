@@ -262,31 +262,31 @@ void FontRenderer::wrap_text(const Text &text, const Vector2 &scale,
     }
 }
 
-void FontRenderer::draw(World &world) {
+void FontRenderer::draw(World *world) {
     TWO_PROFILE_FUNC();
     ShadowEffect shadow;
-    auto &camera = world.unpack_one<Camera>();
-    for (auto entity : world.view<Text>()) {
-        auto &text = world.unpack<Text>(entity);
+    auto &camera = world->unpack_one<Camera>();
+    for (auto entity : world->view<Text>()) {
+        auto &text = world->unpack<Text>(entity);
 
         Vector2i offset;
         Vector2 scale;
-        if (world.has_component<PixelTransform>(entity)) {
+        if (world->has_component<PixelTransform>(entity)) {
             // Use absolute screen position
-            auto &transform = world.unpack<PixelTransform>(entity);
+            auto &transform = world->unpack<PixelTransform>(entity);
             offset = transform.position;
             scale = transform.scale;
-        } else if (world.has_component<Transform>(entity)) {
+        } else if (world->has_component<Transform>(entity)) {
             // Use relative world position
-            auto &transform = world.unpack<Transform>(entity);
+            auto &transform = world->unpack<Transform>(entity);
             offset = world_to_screen(transform.position, camera);
             scale = transform.scale * camera.scale;
         } else {
             continue;
         }
-        bool has_shadow = world.has_component<ShadowEffect>(entity);
+        bool has_shadow = world->has_component<ShadowEffect>(entity);
         if (has_shadow)
-            shadow = world.unpack<ShadowEffect>(entity);
+            shadow = world->unpack<ShadowEffect>(entity);
 
         wrap_text(text, scale, wrap_info_cache);
         int x = 0;

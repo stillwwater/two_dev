@@ -34,8 +34,10 @@ const Color Color::Magenta = Color{255, 0, 255, 255};
 
 Image *load_image(const unsigned char *im_data, int size) {
     int w, h, comp;
-    auto *decoded = stbi_load_from_memory(im_data, size, &w, &h, &comp, STBI_default);
     Image::PixelFormat pixelformat;
+
+    auto *decoded = stbi_load_from_memory(
+        im_data, size, &w, &h, &comp, STBI_default);
 
     switch (comp) {
     case 1:
@@ -85,14 +87,16 @@ int bytes_per_pixel(Image::PixelFormat pixelformat) {
 
 Image::Image(int width, int height, PixelFormat pixelformat)
     : w{width}, h{height}
-    , pixelformat{pixelformat} {
-
+    , pixelformat{pixelformat}
+{
     int size = w * h * bytes_per_pixel(pixelformat);
     data = new unsigned char[size];
+    memset(data, 0, size);
 }
 
 Image::~Image() {
     delete[] data;
+    data = nullptr;
 }
 
 int Image::pitch() const {
@@ -101,8 +105,8 @@ int Image::pitch() const {
 
 Color Image::read(const Vector2i &xy) const {
     ASSERT(xy.x >= 0 && xy.y >= 0 && xy.x < w && xy.y < h);
-    int p;
     Color c;
+    int p;
 
     switch (get_pixelformat()) {
     case RGBA32:
@@ -210,7 +214,8 @@ Image *Image::convert(PixelFormat pixelformat) const {
     ASSERT(dst->data != nullptr && this->data != nullptr);
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
-            dst->write(Vector2i{x, y}, read(Vector2i{x, y}));
+            Vector2i xy{x, y};
+            dst->write(xy, read(xy));
         }
     }
     return dst;
@@ -302,8 +307,8 @@ Color hsv_to_color(const Vector3 &hsv) {
         color.y = x;
         color.z = v;
         break;
-    default:
     case 5:
+    default:
         color.x = v;
         color.y = x;
         color.z = y;
