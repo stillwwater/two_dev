@@ -224,6 +224,8 @@ void Sokoban::load() {
 
     auto &camera = pack(make_entity(), Camera{8, {29, 43, 83, 255}});
     camera.scale = 8;
+    camera.position = Vector2(Vector4::one() + Vector4{-1, -1, 3, 4});
+    pprint(Vector4(1) + Vector4{-1, -1, 3, 4});
 
     load_sprites("sokoban.png");
     load_room("sokoban_l0.txt", 8, 7);

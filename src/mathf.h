@@ -23,6 +23,12 @@
 #include <cstdint>
 
 #include "debug.h"
+#include "config.h"
+
+#ifdef TWO_SSE
+#include <xmmintrin.h>
+#endif
+
 
 #define PI 3.14159265358979
 #define E  2.71828182845904
@@ -39,41 +45,6 @@ const int AxisY = 1;
 const int AxisZ = 2;
 const int AxisW = 3;
 
-inline float clamp(float value, float minv, float maxv) {
-    if (value < minv) return minv;
-    if (value > maxv) return maxv;
-    return value;
-}
-
-inline int clampi(int value, int minv, int maxv) {
-    if (value < minv) return minv;
-    if (value > maxv) return maxv;
-    return value;
-}
-
-inline float clamp01(float value) {
-    return clamp(value, 0.0f, 1.0f);
-}
-
-inline float lerp(float a, float b, float t) {
-    return a + (b - a) * clamp01(t);
-}
-
-inline float signf(float value) {
-    return value >= 0.0f ? 1.0f : -1.0f;
-}
-
-inline uint64_t next_pow2(uint64_t value) {
-    --value;
-    value |= value >> 1;
-    value |= value >> 2;
-    value |= value >> 4;
-    value |= value >> 8;
-    value |= value >> 16;
-    value |= value >> 32;
-    return value + 1;
-}
-
 struct Vector2;
 struct Vector2i;
 struct Vector3;
@@ -85,6 +56,8 @@ struct Rect {
     Rect() {}
     Rect(float x, float y, float w, float h)
         : x{x}, y{y}, w{w}, h{h} {}
+
+    Rect(const Vector2 &position, const Vector2 &size);
 
     static inline Rect zero();
 
@@ -100,9 +73,11 @@ struct Vector2 {
 
     Vector2() {}
     Vector2(float x, float y) : x{x}, y{y} {}
-    Vector2(const Vector3 &vec3);
-    Vector2(const Vector4 &vec4);
     Vector2(const Vector2i &vec2i);
+
+    explicit Vector2(float s) : x{s}, y{s} {}
+    explicit Vector2(const Vector3 &vec3);
+    explicit Vector2(const Vector4 &vec4);
 
     static inline Vector2 zero();
     static inline Vector2 one();
@@ -176,7 +151,9 @@ struct Vector2i {
 
     Vector2i() {}
     Vector2i(int x, int y) : x{x}, y{y} {}
-    Vector2i(const Vector2 &vec2);
+
+    explicit Vector2i(const Vector2 &vec2);
+    explicit Vector2i(int s) : x{s}, y{s} {}
 
     static inline Vector2i zero();
     static inline Vector2i one();
@@ -207,7 +184,11 @@ struct Vector3 {
     Vector3() {}
     Vector3(float x, float y, float z) : x{x}, y{y}, z{z} {}
     Vector3(const Vector2 &vec2);
-    Vector3(const Vector4 &vec4);
+
+    explicit Vector3(const Vector4 &vec4);
+
+    // Broadcast init
+    explicit Vector3(float s) : x{s}, y{s}, z{s} {}
 
     static inline Vector3 zero();
     static inline Vector3 one();
@@ -236,15 +217,27 @@ struct Vector3 {
 };
 
 struct Vector4 {
+#ifdef TWO_SSE
+    union {
+        struct {
+            float x, y, z, w;
+        };
+        __m128 m128;
+    };
+    Vector4(const __m128 &m) : m128{m} {}
+#else
     float x, y, z, w;
+#endif
 
     Vector4() {}
 
-    Vector4(float x, float y, float z, float w)
-        : x{x}, y{y}, z{z}, w{w} {}
+    Vector4(float x, float y, float z, float w);
 
     Vector4(const Vector3 &vec3);
     Vector4(const Vector2 &vec2);
+
+    // Broadcast init
+    explicit Vector4(float s);
 
     static inline Vector4 zero();
     static inline Vector4 one();
@@ -273,8 +266,62 @@ struct Vector4 {
 };
 
 //
+// Misc
+//
+
+inline float madd(float a, float b, float c) {
+    return a * b + c;
+}
+
+inline float clamp(float value, float minv, float maxv) {
+    if (value < minv) return minv;
+    if (value > maxv) return maxv;
+    return value;
+}
+
+inline int clampi(int value, int minv, int maxv) {
+    if (value < minv) return minv;
+    if (value > maxv) return maxv;
+    return value;
+}
+
+inline float clamp01(float value) {
+    return clamp(value, 0.0f, 1.0f);
+}
+
+inline float lerp(float a, float b, float t) {
+    return a + (b - a) * clamp01(t);
+}
+
+inline float signf(float value) {
+    if (value > 0.0f)
+        return 1.0f;
+    if (value < 0.0f)
+        return -1.0f;
+    return 0.0f;
+}
+
+inline uint64_t next_pow2(uint64_t value) {
+    --value;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+    value |= value >> 32;
+    return value + 1;
+}
+
+//
 // Rect
 //
+
+inline Rect::Rect(const Vector2 &position, const Vector2 &size) {
+    x = position.x;
+    y = position.y;
+    w = size.x;
+    h = size.y;
+}
 
 inline Rect Rect::zero() {
     return Rect{0.0f, 0.0f, 0.0f, 0.0f};
@@ -355,6 +402,10 @@ inline Vector2 vec_min(const Vector2 &a, const Vector2 &b) {
 
 inline Vector2 vec_max(const Vector2 &a, const Vector2 &b) {
     return Vector2{fmaxf(a.x, b.x), fmaxf(a.y, b.y)};
+}
+
+inline Vector2 vec_abs(const Vector2 &v) {
+    return Vector2{fabsf(v.x), fabsf(v.y)};
 }
 
 inline Vector2 reflect(const Vector2 &v, const Vector2 &normal) {
@@ -511,6 +562,10 @@ inline Vector2i reflect(const Vector2i &v, const Vector2i &normal) {
                     v.y - s * normal.y};
 }
 
+inline Vector2i vec_abs(const Vector2i &v) {
+    return Vector2i{abs(v.x), abs(v.y)};
+}
+
 inline Vector2i::Vector2i(const Vector2 &vec2)
     : x{int(vec2.x)}, y{int(vec2.y)} {}
 
@@ -660,6 +715,12 @@ inline Vector3 vec_max(const Vector3 &a, const Vector3 &b) {
                    fmaxf(a.z, b.z)};
 }
 
+inline Vector3 vec_abs(const Vector3 &v) {
+    return Vector3{fabsf(v.x),
+                   fabsf(v.y),
+                   fabsf(v.z)};
+}
+
 inline Vector3 reflect(const Vector3 &v, const Vector3 &normal) {
     float s = 2.0f * dot(v, normal);
     return Vector3{v.x - s * normal.x,
@@ -768,11 +829,19 @@ inline Vector3 Vector3::normalized() const {
 //
 
 inline Vector4 operator+(const Vector4 &a, const Vector4 &b) {
+#ifdef TWO_SSE
+    return Vector4{_mm_add_ps(a.m128, b.m128)};
+#else
     return Vector4{a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
+#endif
 }
 
 inline Vector4 operator-(const Vector4 &a, const Vector4 &b) {
+#ifdef TWO_SSE
+    return Vector4{_mm_sub_ps(a.m128, b.m128)};
+#else
     return Vector4{a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+#endif
 }
 
 inline Vector4 operator*(const Vector4 &v, float s) {
@@ -789,11 +858,19 @@ inline Vector4 operator/(const Vector4 &v, float s) {
 }
 
 inline Vector4 operator*(const Vector4 &a, const Vector4 &b) {
+#ifdef TWO_SSE
+    return Vector4{_mm_mul_ps(a.m128, b.m128)};
+#else
     return Vector4{a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
+#endif
 }
 
 inline Vector4 operator/(const Vector4 &a, const Vector4 &b) {
+#ifdef TWO_SSE
+    return Vector4{_mm_div_ps(a.m128, b.m128)};
+#else
     return Vector4{a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
+#endif
 }
 
 inline float dot(const Vector4 &a, const Vector4 &b) {
@@ -833,18 +910,45 @@ inline Vector4 vec_max(const Vector4 &a, const Vector4 &b) {
                    fmaxf(a.w, b.w)};
 }
 
+inline Vector4 vec_abs(const Vector4 &v) {
+    return Vector4{fabsf(v.x),
+                   fabsf(v.y),
+                   fabsf(v.z),
+                   fabsf(v.w)};
+}
+
+inline void pprint(const Vector4 &v) {
+    printf("(%f, %f, %f, %f)\n", v.x, v.y, v.z, v.w);
+}
+
+inline Vector4::Vector4(float x, float y, float z, float w) {
+#ifdef TWO_SSE
+    m128 = _mm_set_ps(w, z, y, x);
+#else
+    *this = {x, w, z, w};
+#endif
+}
+
 inline Vector4::Vector4(const Vector2 &vec2)
     : x{vec2.x}, y{vec2.y}, z{0.0f}, w{0.0f} {}
 
 inline Vector4::Vector4(const Vector3 &vec3)
     : x{vec3.x}, y{vec3.y}, z{vec3.z}, w{0.0f} {}
 
+inline Vector4::Vector4(float s) {
+#ifdef TWO_SSE
+    m128 = _mm_set1_ps(s);
+#else
+    *this = {s, s, s, s};
+#endif
+}
+
 inline Vector4 Vector4::zero() {
-    return Vector4{0.0f, 0.0f, 0.0f, 0.0f};
+    return Vector4{0.0f};
 }
 
 inline Vector4 Vector4::one() {
-    return Vector4{1.0f, 1.0f, 1.0f, 1.0f};
+    return Vector4{1.0f};
 }
 
 inline float Vector4::operator[](int i) const {
@@ -858,7 +962,11 @@ inline float &Vector4::operator[](int i) {
 }
 
 inline bool Vector4::operator==(const Vector4 &v) const {
+#ifdef TWO_SSE
+    return (_mm_movemask_ps(_mm_cmpeq_ps(m128, v.m128)) & 0xf) == 0xf;
+#else
     return x == v.x && y == v.y && z == v.z && w == v.w;
+#endif
 }
 
 inline bool Vector4::operator!=(const Vector4 &v) const {
@@ -866,7 +974,12 @@ inline bool Vector4::operator!=(const Vector4 &v) const {
 }
 
 inline Vector4 Vector4::operator-() const {
+#ifdef TWO_SSE
+    __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
+    return Vector4{_mm_xor_ps(m128, mask)};
+#else
     return Vector4{-x, -y, -z, -w};
+#endif
 }
 
 inline Vector4 &Vector4::operator+=(const Vector4 &v) {

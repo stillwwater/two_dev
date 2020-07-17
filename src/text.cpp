@@ -274,7 +274,7 @@ void FontRenderer::draw(World *world) {
         if (world->has_component<PixelTransform>(entity)) {
             // Use absolute screen position
             auto &transform = world->unpack<PixelTransform>(entity);
-            offset = transform.position;
+            offset = Vector2i(transform.position);
             scale = transform.scale;
         } else if (world->has_component<Transform>(entity)) {
             // Use relative world position
