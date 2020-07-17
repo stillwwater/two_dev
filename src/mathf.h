@@ -29,7 +29,6 @@
 #include <xmmintrin.h>
 #endif
 
-
 #define PI 3.14159265358979
 #define E  2.71828182845904
 
@@ -40,10 +39,10 @@ constexpr float DegToRad = PI / 180.0;
 constexpr float RadToDeg = 180.0 / PI;
 
 // Makes certain code easier to read.
-const int AxisX = 0;
-const int AxisY = 1;
-const int AxisZ = 2;
-const int AxisW = 3;
+constexpr int AxisX = 0;
+constexpr int AxisY = 1;
+constexpr int AxisZ = 2;
+constexpr int AxisW = 3;
 
 struct Vector2;
 struct Vector2i;
