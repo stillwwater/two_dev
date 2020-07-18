@@ -8,13 +8,13 @@ namespace test {
 
 // Some test components
 
-struct Vector2 {
+struct float2 {
     float x, y;
 };
 
 struct Transform {
-    Vector2 pos;
-    Vector2 scale;
+    float2 pos;
+    float2 scale;
     float rot;
 };
 

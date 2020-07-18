@@ -133,10 +133,10 @@ class FontRenderer : public System {
 public:
     void draw(World *world) override;
 
-    void wrap_text(const Text &text, const Vector2 &scale,
+    void wrap_text(const Text &text, const float2 &scale,
                    std::vector<bool> &result) const;
 
-    Vector2i text_size(const Text &text, const Vector2 &scale,
+    int2 text_size(const Text &text, const float2 &scale,
                        const std::vector<bool> &wrap_info) const;
 
 private:

@@ -40,12 +40,12 @@ struct Target {};
 
 struct Animation {
     static constexpr float MaxLerpTime = 0.12f;
-    Vector2 target;
+    float2 target;
     float lerp_time;
 };
 
 struct Move {
-    Vector2 direction;
+    float2 direction;
 };
 
 struct Room {
@@ -60,18 +60,18 @@ struct Room {
         , height{height}
         , layers{2} { entities.resize(width * height * layers); }
 
-    Entity at(const Vector2 &position, int layer) const;
-    Entity top(const Vector2 &position) const;
-    void set(const Vector2 &position, int layer, Entity e);
+    Entity at(const float2 &position, int layer) const;
+    Entity top(const float2 &position) const;
+    void set(const float2 &position, int layer, Entity e);
 };
 
-Entity Room::at(const Vector2 &position, int layer) const {
+Entity Room::at(const float2 &position, int layer) const {
     int x = int(position.x);
     int y = int(position.y);
     return entities[layer + layers * (x + y * width)];
 }
 
-Entity Room::top(const Vector2 &position) const {
+Entity Room::top(const float2 &position) const {
     auto entity = at(position, 1);
     if (entity != NullEntity) {
         return entity;
@@ -79,7 +79,7 @@ Entity Room::top(const Vector2 &position) const {
     return at(position, 0);
 }
 
-void Room::set(const Vector2 &position, int layer, Entity e) {
+void Room::set(const float2 &position, int layer, Entity e) {
     int x = int(position.x);
     int y = int(position.y);
     entities[layer + layers * (x + y * width)] = e;
@@ -125,8 +125,8 @@ public:
     void update(World *world, float dt) override;
 
     bool move(World *world,
-              const Vector2 &position,
-              const Vector2 &direction) const;
+              const float2 &position,
+              const float2 &direction) const;
 };
 
 void Collision::update(World *world, float) {
@@ -168,8 +168,8 @@ void Collision::update(World *world, float) {
 }
 
 bool Collision::move(World *world,
-                     const Vector2 &position,
-                     const Vector2 &direction) const {
+                     const float2 &position,
+                     const float2 &direction) const {
     auto target = position + direction;
     auto &room = world->unpack_one<Room>();
     auto entity = room.top(position);
@@ -224,8 +224,8 @@ void Sokoban::load() {
 
     auto &camera = pack(make_entity(), Camera{8, {29, 43, 83, 255}});
     camera.scale = 8;
-    camera.position = Vector2(Vector4::one() + Vector4{-1, -1, 3, 4});
-    pprint(Vector4(1) + Vector4{-1, -1, 3, 4});
+    camera.position = float2(float4(1) + float4{-1, -1, 3, 4});
+    pprint(int4(1) / int4{-1, -1, 3, 4});
 
     load_sprites("sokoban.png");
     load_room("sokoban_l0.txt", 8, 7);
@@ -242,7 +242,7 @@ void Sokoban::load() {
     auto &pp = unpack<Player>(p2);
     auto &a = unpack<Active>(p2);
     pack(p2, Player{});
-    tf.position = Vector2::one();
+    tf.position = float2(1);
 
     auto &room = unpack_one<Room>();
     room.set(tf.position, 1, p2);
@@ -271,7 +271,7 @@ void Sokoban::load_room(const std::string &level, int width, int height) {
 
     auto &room = pack(make_entity(), Room{width, height});
     auto &cam = unpack_one<Camera>();
-    cam.position = Vector2{width / 2.0f - 0.5f, height / 2.0f - 0.5f};
+    cam.position = float2{width / 2.0f - 0.5f, height / 2.0f - 0.5f};
 
     std::string lvl;
     for (int i = 0; i < len; ++i) {
@@ -280,13 +280,13 @@ void Sokoban::load_room(const std::string &level, int width, int height) {
     }
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            Vector2 position(x, y);
+            float2 position(x, y);
             auto type = token_to_type.at(lvl[x + y * width]);
             int layer = 0;
             if (type == Entity_Player || type == Entity_Crate) {
                 // Add a floor tile under player and crates
                 auto bg = make_entity();
-                pack(bg, Transform{Vector2(x, y)});
+                pack(bg, Transform{float2(x, y)});
                 pack(bg, Tag{Entity_Ground, 0});
                 pack(bg, atlas[Entity_Ground]);
                 room.set(position, 0, bg);
@@ -360,7 +360,7 @@ void TitleScreen::load() {
 
     std::vector<bool> wrap_info;
     font_renderer->wrap_text(text, tf.scale, wrap_info);
-    Vector2i size = font_renderer->text_size(text, tf.scale, wrap_info);
+    int2 size = font_renderer->text_size(text, tf.scale, wrap_info);
     tf.position.x = 640 - size.x / 2;
     tf.position.y = 360 - size.y / 2;
 

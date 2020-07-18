@@ -17,4 +17,25 @@
 #    define TWO_NEON
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+#define TWO_FMT_PRINTF(a, b) __attribute__((__format__(printf, a, b)))
+#define LIKELY(x) __builtin_expect(x, 1)
+#define UNLIKELY(x) __builtin_expect(x, 0)
+#else
+#define TWO_FMT_PRINTF(a, b)
+#define LIKELY(x) (x)
+#define UNLIKELY(x) (x)
+#endif
+
+#if defined(__clang__) || defined(__GNUC__)
+#define TWO_PRETTY_FUNCTION __PRETTY_FUNCTION__
+#elif defined(MSVC)
+#define TWO_PRETTY_FUNCTION __FUNCSIG__
+#else
+#define TWO_PRETTY_FUNCTION __func__
+#endif
+
+#define UNUSED(exp_) (void)(exp_)
+#define MAYBE_UNUSED(exp_) UNUSED(exp_);
+
 #endif // TWO_CONFIG_H

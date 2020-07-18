@@ -184,12 +184,12 @@ static inline void missing_glyph(const std::shared_ptr<Font> &font,
              font->name.c_str(), codepoint);
 }
 
-Vector2i FontRenderer::text_size(const Text &text, const Vector2 &scale,
+int2 FontRenderer::text_size(const Text &text, const float2 &scale,
                                  const std::vector<bool> &wrap_info) const {
     // line_height is probably negative as it indicates how much to
     // move on the screen but here we only care about the total size
     int line_height = int(abs(text.font->line_height) * text.line_spacing);
-    Vector2i size{0, line_height};
+    int2 size{0, line_height};
     int x = 0;
 
     for (size_t i = 0; i < text.text.size(); ++i) {
@@ -215,7 +215,7 @@ Vector2i FontRenderer::text_size(const Text &text, const Vector2 &scale,
     return size;
 }
 
-void FontRenderer::wrap_text(const Text &text, const Vector2 &scale,
+void FontRenderer::wrap_text(const Text &text, const float2 &scale,
                              std::vector<bool> &result) const {
     TWO_PROFILE_FUNC();
     result.resize(text.text.size(), false);
@@ -269,12 +269,12 @@ void FontRenderer::draw(World *world) {
     for (auto entity : world->view<Text>()) {
         auto &text = world->unpack<Text>(entity);
 
-        Vector2i offset;
-        Vector2 scale;
+        int2 offset;
+        float2 scale;
         if (world->has_component<PixelTransform>(entity)) {
             // Use absolute screen position
             auto &transform = world->unpack<PixelTransform>(entity);
-            offset = Vector2i(transform.position);
+            offset = int2(transform.position);
             scale = transform.scale;
         } else if (world->has_component<Transform>(entity)) {
             // Use relative world position

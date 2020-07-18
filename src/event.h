@@ -71,7 +71,7 @@ struct KeyUp {
 struct MouseDown {
     // Mouse position in pixels. Use `two::screen_to_world()` to convert
     // to world coordinates.
-    Vector2i position;
+    int2 position;
 
     // The button index that was pressed. 1 is the primary button, 2 is
     // the secondary and 3 is the middle mouse button. Other buttons
@@ -83,7 +83,7 @@ struct MouseDown {
 struct MouseUp {
     // Mouse position in pixels. Use `two::screen_to_world()` to convert
     // to world coordinates.
-    Vector2i position;
+    int2 position;
 
     // The button index that was released. 1 is the primary button, 2 is
     // the secondary and 3 is the middle mouse button. Other buttons
@@ -94,7 +94,7 @@ struct MouseUp {
 // Emitted when the mouse or is scrolled on the X or Y axis.
 struct MouseScroll {
     // The amount the scroll wheel has moved.
-    Vector2 delta;
+    float2 delta;
 };
 
 // Emitted when the game is closing. The event is emitted before the loaded

@@ -129,12 +129,12 @@ World *active_world() {
     return world;
 }
 
-Vector2i world_to_screen(const Vector2 &v, const Camera &camera) {
+int2 world_to_screen(const float2 &v, const Camera &camera) {
     int w, h;
     SDL_RenderGetLogicalSize(gfx, &w, &h);
-    auto tilesizef = Vector2(camera.tilesize) * camera.scale;
+    auto tilesizef = float2(camera.tilesize) * camera.scale;
 
-    Vector2i result;
+    int2 result;
     int ox = int(camera.position.x * tilesizef.x);
     int oy = int(camera.position.y * tilesizef.y);
     result.x = (int(v.x * tilesizef.x) + w / 2) - ox;
@@ -142,12 +142,12 @@ Vector2i world_to_screen(const Vector2 &v, const Camera &camera) {
     return result;
 }
 
-Vector2 screen_to_world(const Vector2i &v, const Camera &camera) {
+float2 screen_to_world(const int2 &v, const Camera &camera) {
     int w, h;
     SDL_RenderGetLogicalSize(gfx, &w, &h);
-    auto tilesizef = Vector2(camera.tilesize) * camera.scale;
+    auto tilesizef = float2(camera.tilesize) * camera.scale;
 
-    Vector2 result;
+    float2 result;
     float ox = camera.position.x;
     float oy = camera.position.y;
     result.x = float(v.x - w * 0.5f) / tilesizef.x + ox;
@@ -208,7 +208,7 @@ static void push_event(const SDL_Event &e) {
             }
             MouseDown res;
             res.button = index;
-            res.position = Vector2i{e.button.x, e.button.y};
+            res.position = int2{e.button.x, e.button.y};
             emit(res);
         }
         break;
@@ -225,7 +225,7 @@ static void push_event(const SDL_Event &e) {
             }
             MouseUp res;
             res.button = index;
-            res.position = Vector2i{e.button.x, e.button.y};
+            res.position = int2{e.button.x, e.button.y};
             emit(res);
         }
         break;
@@ -233,7 +233,7 @@ static void push_event(const SDL_Event &e) {
         {
             // Mouse scrolling is inverted
             int dir = e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -1 : 1;
-            Vector2 delta{float(e.wheel.x * dir), float(e.wheel.y * dir)};
+            float2 delta{float(e.wheel.x * dir), float(e.wheel.y * dir)};
             emit(MouseScroll{delta});
         }
     case SDL_APP_LOWMEMORY:
@@ -258,8 +258,8 @@ void pump() {
     }
 }
 
-Vector2i mouse_position() {
-    Vector2i state;
+int2 mouse_position() {
+    int2 state;
     SDL_GetMouseState(&state.x, &state.y);
     return state;
 }

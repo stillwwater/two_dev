@@ -42,9 +42,9 @@ struct Color {
     Color(unsigned char r, unsigned char g, unsigned char b)
         : r{r}, g{g}, b{b}, a{255} {}
 
-    // Creates a color from a Vector4 by multiplying each component in the
+    // Creates a color from a float4 by multiplying each component in the
     // vector by 255. The vector will be clamped to be between 0.0f and 1.0f.
-    Color(const Vector4 &vec4);
+    Color(const float4 &vec4);
 
     unsigned char operator[](int i) const;
     unsigned char &operator[](int i);
@@ -60,7 +60,7 @@ struct Color {
 
     // Returns a vector with rgba components normalized to be between
     // 0.0f and 1.0f (inclusive)
-    Vector4 normalized() const;
+    float4 normalized() const;
 
     // Packs rgba components into an unsigned integer. The resulting int
     // will have the format `0xRRGGBBAA` regardless of endianness.
@@ -100,16 +100,16 @@ public:
     int pitch() const;
 
     // Read a pixel at a location
-    Color read(const Vector2i &xy) const;
+    Color read(const int2 &xy) const;
 
     // Write a pixel to a location
-    void write(const Vector2i &xy, const Color &c);
+    void write(const int2 &xy, const Color &c);
 
     // Paste an image onto this Image. If the destination
     // image is smaller to source image will be clamped.
     //
     // > Note: for better performance use a target Texture with SDL_RenderCopy.
-    void paste(Image *im, const Vector2i &xy);
+    void paste(Image *im, const int2 &xy);
 
     // Convert image to a new image with the desired format.
     Image *convert(PixelFormat pixelformat) const;
@@ -155,13 +155,13 @@ int bytes_per_pixel(Image::PixelFormat pixelformat);
 //
 // > Note: This conversion is not precise due to rounding errors so the
 // result of `hsv_to_color(color_to_hsv(col))` will not be the same as `col`.
-Vector3 color_to_hsv(const Color &rgb);
+float3 color_to_hsv(const Color &rgb);
 
 // Convert HSV to color. HSV values should be in range [0, 1].
 //
 // > Note: This conversion is not precise due to rounding errors so the
 // result of `hsv_to_color(color_to_hsv(col))` will not be the same as `col`.
-Color hsv_to_color(const Vector3 &hsv);
+Color hsv_to_color(const float3 &hsv);
 
 inline Color operator+(const Color &a, const Color &b) {
     Color result = a;
@@ -183,7 +183,7 @@ inline Color operator/(const Color &a, const Color &b) {
     return result /= b;
 }
 
-inline Color::Color(const Vector4 &rgba) {
+inline Color::Color(const float4 &rgba) {
     r = static_cast<unsigned char>(clamp01(rgba.x) * 255.0f);
     g = static_cast<unsigned char>(clamp01(rgba.y) * 255.0f);
     b = static_cast<unsigned char>(clamp01(rgba.z) * 255.0f);
@@ -240,9 +240,9 @@ inline Color &Color::operator/=(const Color &c) {
     return *this;
 }
 
-inline Vector4 Color::normalized() const {
+inline float4 Color::normalized() const {
     constexpr float inv255 = 1.0f / 255.0f;
-    return Vector4{float(r) * inv255,
+    return float4{float(r) * inv255,
                    float(g) * inv255,
                    float(b) * inv255,
                    float(a) * inv255};

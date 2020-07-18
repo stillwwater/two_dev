@@ -59,7 +59,7 @@ struct Sprite {
     // the top left corner of the sprite and (1, 1) is the bottom right.
     // By the default this is value (0.5, 0.5) which is the center of
     // the sprite.
-    Vector2 origin;
+    float2 origin;
 
     Flip flip;
 
@@ -77,7 +77,7 @@ struct Sprite {
     Sprite(const Texture &texture, const Rect &rect)
         : texture{texture}
         , rect{rect}
-        , origin{Vector2{0.5f, 0.5f}}
+        , origin{float2{0.5f, 0.5f}}
         , flip{FlipNone}
         , color{Color{255, 255, 255, 255}}
         , layer{0} {}

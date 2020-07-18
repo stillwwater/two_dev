@@ -16,9 +16,10 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef TWO_MATH_H
-#define TWO_MATH_H
+#ifndef TWO_MATHF_H
+#define TWO_MATHF_H
 
+#include <type_traits>
 #include <cmath>
 #include <cstdint>
 
@@ -44,10 +45,640 @@ constexpr int AxisY = 1;
 constexpr int AxisZ = 2;
 constexpr int AxisW = 3;
 
-struct Vector2;
-struct Vector2i;
-struct Vector3;
-struct Vector4;
+namespace internal {
+    template <typename T>
+    struct Vector2_t;
+
+    template <typename T>
+    struct Vector3_t;
+
+    template <typename T>
+    struct Vector4_t;
+} // internal
+
+// 2D float vector
+using float2 = internal::Vector2_t<float>;
+
+// 3D float vector
+using float3 = internal::Vector3_t<float>;
+
+// 4D float vector
+using float4 = internal::Vector4_t<float>;
+
+// 2D int vector
+using int2 = internal::Vector2_t<int>;
+
+// 3D int vector
+using int3 = internal::Vector3_t<int>;
+
+// 4D int vector
+using int4 = internal::Vector4_t<int>;
+
+namespace internal {
+
+template <typename T>
+struct Vector2_t {
+    static_assert(std::is_arithmetic<T>(), "T must be a numeric type");
+    T x, y;
+
+    Vector2_t() = default;
+    Vector2_t(T x, T y) : x{x}, y{y} {}
+
+    template <typename U>
+    explicit Vector2_t(const Vector2_t<U> &vec2)
+        : x{static_cast<T>(vec2.x)}
+        , y{static_cast<T>(vec2.y)} {}
+
+    explicit Vector2_t(T s) : x{s}, y{s} {}
+    explicit Vector2_t(const Vector3_t<T> &vec3);
+    explicit Vector2_t(const Vector4_t<T> &vec4);
+
+    T operator[](int i) const;
+    T &operator[](int i);
+
+    bool operator==(const Vector2_t<T> &v) const;
+    bool operator!=(const Vector2_t<T> &v) const;
+
+    // All operations are component wise
+    Vector2_t<T> operator-() const;
+    Vector2_t<T> &operator+=(const Vector2_t<T> &v);
+    Vector2_t<T> &operator-=(const Vector2_t<T> &v);
+    Vector2_t<T> &operator*=(const Vector2_t<T> &v);
+    Vector2_t<T> &operator/=(const Vector2_t<T> &v);
+    Vector2_t<T> &operator*=(T s);
+    Vector2_t<T> &operator/=(T s);
+
+    // Returns the vector's magnitude
+    float length() const;
+    float length_sqr() const;
+};
+
+template <typename T>
+struct Vector3_t {
+    static_assert(std::is_arithmetic<T>(), "T must be a numeric type");
+    T x, y, z;
+
+    Vector3_t() = default;
+    Vector3_t(T x, T y, T z) : x{x}, y{y}, z{z} {}
+
+    template <typename U>
+    explicit Vector3_t(const Vector3_t<U> &vec3)
+        : x{static_cast<T>(vec3.x)}
+        , y{static_cast<T>(vec3.y)}
+        , z{static_cast<T>(vec3.z)} {}
+
+    explicit Vector3_t(float s) : x{s}, y{s}, z{s} {}
+    Vector3_t(const Vector2_t<T> &vec2);
+    explicit Vector3_t(const Vector4_t<T> &vec4);
+
+    T operator[](int i) const;
+    T &operator[](int i);
+
+    bool operator==(const Vector3_t<T> &v) const;
+    bool operator!=(const Vector3_t<T> &v) const;
+
+    // All operations are component wise
+    Vector3_t<T> operator-() const;
+    Vector3_t<T> &operator+=(const Vector3_t<T> &v);
+    Vector3_t<T> &operator-=(const Vector3_t<T> &v);
+    Vector3_t<T> &operator*=(const Vector3_t<T> &v);
+    Vector3_t<T> &operator/=(const Vector3_t<T> &v);
+    Vector3_t<T> &operator*=(T s);
+    Vector3_t<T> &operator/=(T s);
+
+    // Returns the vector's magnitude
+    float length() const;
+    float length_sqr() const;
+};
+
+template <typename T>
+struct Vector4_t {
+    static_assert(std::is_arithmetic<T>(), "T must be a numeric type");
+#ifdef TWO_SSE
+    static_assert((sizeof(T) * 4) == sizeof(__m128),
+                  "sizeof(Vector4) must be 16 bytes");
+    union {
+        // Only use with float vector
+        __m128 m128;
+        struct { T x, y, z, w; };
+    };
+
+    Vector4_t<float>(__m128 m) : m128{m} {}
+#else
+    T x, y, z, w;
+#endif
+
+    Vector4_t() = default;
+    Vector4_t(T x, T y, T z, T w)
+        : x{x}, y{y}, z{z}, w{w} {}
+
+    template <typename U>
+    explicit Vector4_t(const Vector4_t<U> &vec4)
+        : x{static_cast<T>(vec4.x)}
+        , y{static_cast<T>(vec4.y)}
+        , z{static_cast<T>(vec4.z)}
+        , w{static_cast<T>(vec4.w)} {}
+
+    explicit Vector4_t(T s) : x{s}, y{x}, z{s}, w{s} {}
+    Vector4_t(const Vector2_t<T> &vec2);
+    Vector4_t(const Vector3_t<T> &vec3);
+
+    T operator[](int i) const;
+    T &operator[](int i);
+
+    bool operator==(const Vector4_t<T> &v) const;
+    bool operator!=(const Vector4_t<T> &v) const;
+
+    // All operations are component wise
+    Vector4_t<T> operator-() const;
+    Vector4_t<T> &operator+=(const Vector4_t<T> &v);
+    Vector4_t<T> &operator-=(const Vector4_t<T> &v);
+    Vector4_t<T> &operator*=(const Vector4_t<T> &v);
+    Vector4_t<T> &operator/=(const Vector4_t<T> &v);
+    Vector4_t<T> &operator*=(T s);
+    Vector4_t<T> &operator/=(T s);
+
+    // Returns the vector's magnitude
+    float length() const;
+    float length_sqr() const;
+};
+
+//
+// Vector2
+//
+
+template <typename T>
+inline Vector2_t<T> operator+(const Vector2_t<T> &a, const Vector2_t<T> &b) {
+    return {a.x + b.x, a.y + b.y};
+}
+
+template <typename T>
+inline Vector2_t<T> operator-(const Vector2_t<T> &a, const Vector2_t<T> &b) {
+    return {a.x - b.x, a.y - b.y};
+}
+
+template <typename T>
+inline Vector2_t<T> operator*(const Vector2_t<T> &a, const Vector2_t<T> &b) {
+    return {a.x * b.x, a.y * b.y};
+}
+
+template <typename T>
+inline Vector2_t<T> operator/(const Vector2_t<T> &a, const Vector2_t<T> &b) {
+    return {a.x / b.x, a.y / b.y};
+}
+
+template <typename T>
+inline Vector2_t<T> operator*(const Vector2_t<T> &v, float s) {
+    return {v.x * s, v.y * s};
+}
+
+template <typename T>
+inline Vector2_t<T> operator*(float s, const Vector2_t<T> &v) {
+    return {s * v.x, s * v.y};
+}
+
+template <typename T>
+inline Vector2_t<T> operator/(const Vector2_t<T> &v, float s) {
+    return {v.x / s, v.y / s};
+}
+
+inline float2 operator/(const float2 &v, float s) {
+    float invs = 1.0f / s;
+    return {v.x * invs, v.y * invs};
+}
+
+template <>
+inline Vector2_t<float>::Vector2_t(const Vector3_t<float> &vec3)
+    : x{vec3.x}, y{vec3.y} {}
+
+template <>
+inline Vector2_t<float>::Vector2_t(const Vector4_t<float> &vec4)
+    : x{vec4.x}, y{vec4.y} {}
+
+template <>
+inline Vector2_t<int>::Vector2_t(const Vector3_t<int> &vec3)
+    : x{vec3.x}, y{vec3.y} {}
+
+template <>
+inline Vector2_t<int>::Vector2_t(const Vector4_t<int> &vec4)
+    : x{vec4.x}, y{vec4.y} {}
+
+template <typename T>
+inline T Vector2_t<T>::operator[](int i) const {
+    ASSERT(i >= 0 && i < 2);
+    return (reinterpret_cast<const T *>(this))[i];
+}
+
+template <typename T>
+inline T &Vector2_t<T>::operator[](int i) {
+    ASSERT(i >= 0 && i < 2);
+    return (reinterpret_cast<T *>(this))[i];
+}
+
+template <typename T>
+inline bool Vector2_t<T>::operator==(const Vector2_t<T> &v) const {
+    return x == v.x && y == v.y;
+}
+
+template <typename T>
+inline bool Vector2_t<T>::operator!=(const Vector2_t<T> &v) const {
+    return !(*this == v);
+}
+
+template <typename T>
+inline Vector2_t<T> Vector2_t<T>::operator-() const {
+    return {-x, -y};
+}
+
+template <typename T>
+inline Vector2_t<T> &Vector2_t<T>::operator+=(const Vector2_t<T> &v) {
+    x += v.x;
+    y += v.y;
+    return *this;
+}
+
+template <typename T>
+inline Vector2_t<T> &Vector2_t<T>::operator-=(const Vector2_t<T> &v) {
+    x -= v.x;
+    y -= v.y;
+    return *this;
+}
+
+template <typename T>
+inline Vector2_t<T> &Vector2_t<T>::operator*=(const Vector2_t<T> &v) {
+    x *= v.x;
+    y *= v.y;
+    return *this;
+}
+
+template <typename T>
+inline Vector2_t<T> &Vector2_t<T>::operator/=(const Vector2_t<T> &v) {
+    x /= v.x;
+    y /= v.y;
+    return *this;
+}
+
+template <typename T>
+inline Vector2_t<T> &Vector2_t<T>::operator*=(T s) {
+    x *= s;
+    y *= s;
+    return *this;
+}
+
+template <typename T>
+inline Vector2_t<T> &Vector2_t<T>::operator/=(T s) {
+    x /= s;
+    y /= s;
+    return *this;
+}
+
+template <typename T>
+inline float Vector2_t<T>::length() const {
+    return sqrtf(x * x + y * y);
+}
+
+template <typename T>
+inline float Vector2_t<T>::length_sqr() const {
+    return x * x + y * y;
+}
+
+//
+// Vector3
+//
+
+template <typename T>
+inline Vector2_t<T> operator+(const Vector3_t<T> &a, const Vector3_t<T> &b) {
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+template <typename T>
+inline Vector3_t<T> operator-(const Vector3_t<T> &a, const Vector3_t<T> &b) {
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+template <typename T>
+inline Vector3_t<T> operator*(const Vector3_t<T> &a, const Vector3_t<T> &b) {
+    return {a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
+template <typename T>
+inline Vector3_t<T> operator/(const Vector3_t<T> &a, const Vector3_t<T> &b) {
+    return {a.x / b.x, a.y / b.y, a.z / b.z};
+}
+
+template <typename T>
+inline Vector3_t<T> operator*(const Vector3_t<T> &v, float s) {
+    return {v.x * s, v.y * s, v.z * s};
+}
+
+template <typename T>
+inline Vector3_t<T> operator*(float s, const Vector3_t<T> &v) {
+    return {s * v.x, s * v.y, v.z * s};
+}
+
+template <typename T>
+inline Vector3_t<T> operator/(const Vector3_t<T> &v, float s) {
+    return {v.x / s, v.y / s, v.z / s};
+}
+
+template <>
+inline float3 operator/(const float3 &v, float s) {
+    float invs = 1.0f / s;
+    return {v.x * invs, v.y * invs, v.z * invs};
+}
+
+template <>
+inline Vector3_t<float>::Vector3_t(const Vector4_t<float> &vec4)
+    : x{vec4.x}, y{vec4.y}, z{vec4.z} {}
+
+template <>
+inline Vector3_t<float>::Vector3_t(const Vector2_t<float> &vec2)
+    : x{vec2.x}, y{vec2.y}, z{0} {}
+
+template <>
+inline Vector3_t<int>::Vector3_t(const Vector4_t<int> &vec4)
+    : x{vec4.x}, y{vec4.y}, z{vec4.z} {}
+
+template <>
+inline Vector3_t<int>::Vector3_t(const Vector2_t<int> &vec2)
+    : x{vec2.x}, y{vec2.y}, z{0} {}
+
+template <typename T>
+inline T Vector3_t<T>::operator[](int i) const {
+    ASSERT(i >= 0 && i < 3);
+    return (reinterpret_cast<const T *>(this))[i];
+}
+
+template <typename T>
+inline T &Vector3_t<T>::operator[](int i) {
+    ASSERT(i >= 0 && i < 3);
+    return (reinterpret_cast<T *>(this))[i];
+}
+
+template <typename T>
+inline bool Vector3_t<T>::operator==(const Vector3_t<T> &v) const {
+    return x == v.x && y == v.y && z == v.z;
+}
+
+template <typename T>
+inline bool Vector3_t<T>::operator!=(const Vector3_t<T> &v) const {
+    return !(*this == v);
+}
+
+template <typename T>
+inline Vector3_t<T> Vector3_t<T>::operator-() const {
+    return {-x, -y, -z};
+}
+
+template <typename T>
+inline Vector3_t<T> &Vector3_t<T>::operator+=(const Vector3_t<T> &v) {
+    x += v.x;
+    y += v.y;
+    z += v.z;
+    return *this;
+}
+
+template <typename T>
+inline Vector3_t<T> &Vector3_t<T>::operator-=(const Vector3_t<T> &v) {
+    x -= v.x;
+    y -= v.y;
+    z -= v.z;
+    return *this;
+}
+
+template <typename T>
+inline Vector3_t<T> &Vector3_t<T>::operator*=(const Vector3_t<T> &v) {
+    x *= v.x;
+    y *= v.y;
+    z *= v.z;
+    return *this;
+}
+
+template <typename T>
+inline Vector3_t<T> &Vector3_t<T>::operator/=(const Vector3_t<T> &v) {
+    x /= v.x;
+    y /= v.y;
+    z /= v.z;
+    return *this;
+}
+
+template <typename T>
+inline Vector3_t<T> &Vector3_t<T>::operator*=(T s) {
+    x *= s;
+    y *= s;
+    z *= s;
+    return *this;
+}
+
+template <typename T>
+inline Vector3_t<T> &Vector3_t<T>::operator/=(T s) {
+    x /= s;
+    y /= s;
+    z /= s;
+    return *this;
+}
+
+template <typename T>
+inline float Vector3_t<T>::length() const {
+    return sqrtf(x * x + y * y + z * z);
+}
+
+template <typename T>
+inline float Vector3_t<T>::length_sqr() const {
+    return x * x + y * y + z * z;
+}
+
+//
+// Vector4
+//
+
+#ifdef TWO_SSE
+inline float4 operator+(const float4 &a, const float4 &b) {
+    return float4{_mm_add_ps(a.m128, b.m128)};
+}
+
+inline float4 operator-(const float4 &a, const float4 &b) {
+    return float4{_mm_sub_ps(a.m128, b.m128)};
+}
+
+inline float4 operator*(const float4 &a, const float4 &b) {
+    return float4{_mm_mul_ps(a.m128, b.m128)};
+}
+
+inline float4 operator/(const float4 &a, const float4 &b) {
+    return float4{_mm_div_ps(a.m128, b.m128)};
+}
+
+template <>
+inline Vector4_t<float>::Vector4_t(float x, float y, float z, float w) {
+    m128 = _mm_set_ps(w, z, y, x);
+}
+
+template <>
+inline Vector4_t<float>::Vector4_t(float s) {
+    m128 = _mm_set1_ps(s);
+}
+
+template <>
+inline bool float4::operator==(const float4 &v) const {
+    return (_mm_movemask_ps(_mm_cmpeq_ps(m128, v.m128)) & 0xf) == 0xf;
+}
+
+template <>
+inline float4 float4::operator-() const {
+    __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
+    return float4{_mm_xor_ps(m128, mask)};
+}
+#endif // TWO_SSE
+
+template <typename T>
+inline Vector4_t<T> operator+(const Vector4_t<T> &a, const Vector4_t<T> &b) {
+    return {a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
+}
+
+template <typename T>
+inline Vector4_t<T> operator-(const Vector4_t<T> &a, const Vector4_t<T> &b) {
+    return {a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+}
+
+template <typename T>
+inline Vector4_t<T> operator*(const Vector4_t<T> &a, const Vector4_t<T> &b) {
+    return {a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
+}
+
+template <typename T>
+inline Vector4_t<T> operator/(const Vector4_t<T> &a, const Vector4_t<T> &b) {
+    return {a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
+}
+
+template <typename T>
+inline Vector4_t<T> operator*(const Vector4_t<T> &v, float s) {
+    return {v.x * s, v.y * s, v.z * s, v.w * s};
+}
+
+template <typename T>
+inline Vector4_t<T> operator*(float s, const Vector4_t<T> &v) {
+    return {s * v.x, s * v.y, v.z * s, v.w * s};
+}
+
+template <typename T>
+inline Vector4_t<T> operator/(const Vector4_t<T> &v, float s) {
+    return {v.x / s, v.y / s, v.z / s, v.w / s};
+}
+
+inline float4 operator/(const float4 &v, float s) {
+    float invs = 1.0f / s;
+    return {v.x * invs, v.y * invs, v.z * invs, v.w * invs};
+}
+
+template <>
+inline Vector4_t<float>::Vector4_t(const Vector3_t<float> &vec3)
+    : x{vec3.x}, y{vec3.y}, z{vec3.z}, w{0} {}
+
+template <>
+inline Vector4_t<float>::Vector4_t(const Vector2_t<float> &vec2)
+    : x{vec2.x}, y{vec2.y}, z{0}, w{0} {}
+
+template <>
+inline Vector4_t<int>::Vector4_t(const Vector3_t<int> &vec3)
+    : x{vec3.x}, y{vec3.y}, z{vec3.z}, w{0} {}
+
+template <>
+inline Vector4_t<int>::Vector4_t(const Vector2_t<int> &vec2)
+    : x{vec2.x}, y{vec2.y}, z{0}, w{0} {}
+
+template <typename T>
+inline T Vector4_t<T>::operator[](int i) const {
+    ASSERT(i >= 0 && i < 4);
+    return (reinterpret_cast<const T *>(this))[i];
+}
+
+template <typename T>
+inline T &Vector4_t<T>::operator[](int i) {
+    ASSERT(i >= 0 && i < 4);
+    return (reinterpret_cast<T *>(this))[i];
+}
+
+template <typename T>
+inline bool Vector4_t<T>::operator==(const Vector4_t<T> &v) const {
+    return x == v.x && y == v.y && z == v.z && w == v.w;
+}
+
+template <typename T>
+inline bool Vector4_t<T>::operator!=(const Vector4_t<T> &v) const {
+    return !(*this == v);
+}
+
+template <typename T>
+inline Vector4_t<T> Vector4_t<T>::operator-() const {
+    return {-x, -y, -z, -w};
+}
+
+template <typename T>
+inline Vector4_t<T> &Vector4_t<T>::operator+=(const Vector4_t<T> &v) {
+    x += v.x;
+    y += v.y;
+    z += v.z;
+    w += v.w;
+    return *this;
+}
+
+template <typename T>
+inline Vector4_t<T> &Vector4_t<T>::operator-=(const Vector4_t<T> &v) {
+    x -= v.x;
+    y -= v.y;
+    z -= v.z;
+    w -= v.w;
+    return *this;
+}
+
+template <typename T>
+inline Vector4_t<T> &Vector4_t<T>::operator*=(const Vector4_t<T> &v) {
+    x *= v.x;
+    y *= v.y;
+    z *= v.z;
+    w *= v.w;
+    return *this;
+}
+
+template <typename T>
+inline Vector4_t<T> &Vector4_t<T>::operator/=(const Vector4_t<T> &v) {
+    x /= v.x;
+    y /= v.y;
+    z /= v.z;
+    w /= v.w;
+    return *this;
+}
+
+template <typename T>
+inline Vector4_t<T> &Vector4_t<T>::operator*=(T s) {
+    x *= s;
+    y *= s;
+    z *= s;
+    w *= s;
+    return *this;
+}
+
+template <typename T>
+inline Vector4_t<T> &Vector4_t<T>::operator/=(T s) {
+    x /= s;
+    y /= s;
+    z /= s;
+    w /= s;
+    return *this;
+}
+
+template <typename T>
+inline float Vector4_t<T>::length() const {
+    return sqrtf(x * x + y * y + z * z + w * w);
+}
+
+template <typename T>
+inline float Vector4_t<T>::length_sqr() const {
+    return x * x + y * y + z * z + w * w;
+}
+
+} // internal
 
 struct Rect {
     float x, y, w, h;
@@ -56,62 +687,22 @@ struct Rect {
     Rect(float x, float y, float w, float h)
         : x{x}, y{y}, w{w}, h{h} {}
 
-    Rect(const Vector2 &position, const Vector2 &size);
+    Rect(const float2 &position, const float2 &size);
 
     static inline Rect zero();
 
     bool operator==(const Rect &rect) const;
     bool operator!=(const Rect &rect) const;
 
-    bool contains(const Vector2 &v) const;
+    bool contains(const float2 &v) const;
     bool overlaps(const Rect &rect) const;
-};
-
-struct Vector2 {
-    float x, y;
-
-    Vector2() {}
-    Vector2(float x, float y) : x{x}, y{y} {}
-    Vector2(const Vector2i &vec2i);
-
-    explicit Vector2(float s) : x{s}, y{s} {}
-    explicit Vector2(const Vector3 &vec3);
-    explicit Vector2(const Vector4 &vec4);
-
-    static inline Vector2 zero();
-    static inline Vector2 one();
-
-    float operator[](int i) const;
-    float &operator[](int i);
-
-    bool operator==(const Vector2 &v) const;
-    bool operator!=(const Vector2 &v) const;
-
-    // All operations are component wise
-    Vector2 operator-() const;
-    Vector2 &operator+=(const Vector2 &v);
-    Vector2 &operator-=(const Vector2 &v);
-    Vector2 &operator*=(float s);
-    Vector2 &operator/=(float s);
-    Vector2 &operator*=(const Vector2 &v);
-    Vector2 &operator/=(const Vector2 &v);
-
-    // Returns the vector's magnitude
-    float length() const;
-    float length_sqr() const;
-
-    // Returns a normalized copy of the vector with length 1
-    Vector2 normalized() const;
-
-    // Returns the unsigned angle in degrees between this vector and another
-    float angle(const Vector2 &v) const;
 };
 
 // Transform Component
 // Position, scale and rotation of an entity.
 struct Transform {
-    Vector2 position;
-    Vector2 scale;
+    float2 position;
+    float2 scale;
 
     // Rotation on the Z axis in degrees
     float rotation;
@@ -119,13 +710,13 @@ struct Transform {
     // Uninitialized
     Transform() {}
 
-    Transform(const Vector2 &position)
+    Transform(const float2 &position)
         : position{position}, scale{1.0f, 1.0f}, rotation{0.0f} {}
 
-    Transform(const Vector2 &position, const Vector2 &scale)
+    Transform(const float2 &position, const float2 &scale)
         : position{position}, scale{scale}, rotation{0.0f} {}
 
-    Transform(const Vector2 &position, const Vector2 &scale, float rotation)
+    Transform(const float2 &position, const float2 &scale, float rotation)
         : position{position}, scale{scale}, rotation{rotation} {}
 };
 
@@ -133,170 +724,65 @@ struct Transform {
 // pixels instead of being a world position. This is useful for drawing
 // UI overlays.
 struct PixelTransform {
-    Vector2 position;
-    Vector2 scale;
+    float2 position;
+    float2 scale;
 
     PixelTransform() {}
 
-    PixelTransform(const Vector2 &position)
+    PixelTransform(const float2 &position)
         : position{position}, scale{1.0f, 1.0f} {}
 
-    PixelTransform(const Vector2 &position, const Vector2 &scale)
+    PixelTransform(const float2 &position, const float2 &scale)
         : position{position}, scale{scale} {}
-};
-
-struct Vector2i {
-    int x, y;
-
-    Vector2i() {}
-    Vector2i(int x, int y) : x{x}, y{y} {}
-
-    explicit Vector2i(const Vector2 &vec2);
-    explicit Vector2i(int s) : x{s}, y{s} {}
-
-    static inline Vector2i zero();
-    static inline Vector2i one();
-
-    int operator[](int i) const;
-    int &operator[](int i);
-
-    bool operator==(const Vector2i &v) const;
-    bool operator!=(const Vector2i &v) const;
-
-    // All operations are component wise
-    Vector2i operator-() const;
-    Vector2i &operator+=(const Vector2i &v);
-    Vector2i &operator-=(const Vector2i &v);
-    Vector2i &operator*=(int s);
-    Vector2i &operator/=(int s);
-    Vector2i &operator*=(const Vector2i &v);
-    Vector2i &operator/=(const Vector2i &v);
-
-    // Returns the vector's magnitude
-    float length() const;
-    int length_sqr() const;
-};
-
-struct Vector3 {
-    float x, y, z;
-
-    Vector3() {}
-    Vector3(float x, float y, float z) : x{x}, y{y}, z{z} {}
-    Vector3(const Vector2 &vec2);
-
-    explicit Vector3(const Vector4 &vec4);
-
-    // Broadcast init
-    explicit Vector3(float s) : x{s}, y{s}, z{s} {}
-
-    static inline Vector3 zero();
-    static inline Vector3 one();
-
-    float operator[](int i) const;
-    float &operator[](int i);
-
-    bool operator==(const Vector3 &v) const;
-    bool operator!=(const Vector3 &v) const;
-
-    // All operations are component wise
-    Vector3 operator-() const;
-    Vector3 &operator+=(const Vector3 &v);
-    Vector3 &operator-=(const Vector3 &v);
-    Vector3 &operator*=(float s);
-    Vector3 &operator/=(float s);
-    Vector3 &operator*=(const Vector3 &v);
-    Vector3 &operator/=(const Vector3 &v);
-
-    // Returns the vector's magnitude
-    float length() const;
-    float length_sqr() const;
-
-    // Returns a normalized copy of the vector with length 1
-    Vector3 normalized() const;
-};
-
-struct Vector4 {
-#ifdef TWO_SSE
-    union {
-        struct {
-            float x, y, z, w;
-        };
-        __m128 m128;
-    };
-    Vector4(const __m128 &m) : m128{m} {}
-#else
-    float x, y, z, w;
-#endif
-
-    Vector4() {}
-
-    Vector4(float x, float y, float z, float w);
-
-    Vector4(const Vector3 &vec3);
-    Vector4(const Vector2 &vec2);
-
-    // Broadcast init
-    explicit Vector4(float s);
-
-    static inline Vector4 zero();
-    static inline Vector4 one();
-
-    float operator[](int i) const;
-    float &operator[](int i);
-
-    bool operator==(const Vector4 &v) const;
-    bool operator!=(const Vector4 &v) const;
-
-    // All operations are component wise
-    Vector4 operator-() const;
-    Vector4 &operator+=(const Vector4 &v);
-    Vector4 &operator-=(const Vector4 &v);
-    Vector4 &operator*=(float s);
-    Vector4 &operator/=(float s);
-    Vector4 &operator*=(const Vector4 &v);
-    Vector4 &operator/=(const Vector4 &v);
-
-    // Returns the vector's magnitude
-    float length() const;
-    float length_sqr() const;
-
-    // Returns a normalized copy of the vector with length 1
-    Vector4 normalized() const;
 };
 
 //
 // Misc
 //
 
-inline float madd(float a, float b, float c) {
-    return a * b + c;
+inline float rsqrt(float value) {
+    return 1.0f / sqrtf(value);
 }
 
-inline float clamp(float value, float minv, float maxv) {
-    if (value < minv) return minv;
-    if (value > maxv) return maxv;
+inline float clamp(float value, float a, float b) {
+    // Both clang and MSVC will remove the branch using simd instructions
+    if (value < a) return a;
+    if (value > b) return b;
     return value;
 }
 
-inline int clampi(int value, int minv, int maxv) {
-    if (value < minv) return minv;
-    if (value > maxv) return maxv;
+inline int clampi(int value, int a, int b) {
+    if (value < a) return a;
+    if (value > b) return b;
     return value;
 }
 
+// Saturate function
 inline float clamp01(float value) {
     return clamp(value, 0.0f, 1.0f);
 }
 
+// Interpolates between [a, b]
 inline float lerp(float a, float b, float t) {
     return a + (b - a) * clamp01(t);
 }
 
+// Returns the position in the curve `t` for a given value `x`.
+// The opposite of a lerp.
+inline float unlerp(float a, float b, float x) {
+    return (x - a) / (b - a);
+}
+
+// Maps a value x in range [a, b] to be in the same relative position
+// in the range [c, d].
+inline float remap(float a, float b, float c, float d, float x) {
+    return lerp(c, d, unlerp(a, b, x));
+}
+
+// Returns 1 if value is positive, -1 if value is negative and 0 otherwise.
 inline float signf(float value) {
-    if (value > 0.0f)
-        return 1.0f;
-    if (value < 0.0f)
-        return -1.0f;
+    if (value > 0.0f) return 1.0f;
+    if (value < 0.0f) return -1.0f;
     return 0.0f;
 }
 
@@ -311,11 +797,68 @@ inline uint64_t next_pow2(uint64_t value) {
     return value + 1;
 }
 
+// Vector swizzle similar to GLSL or HLSL code
+//
+//     // HLSL
+//     float2 a = float4(1.0, 2.0, 3.0, 4.0).zw;
+//     float4 b = float2(1.0, 2.0).xxyy;
+//
+//     // shuffle
+//     float2 a = shuffle2<AxisZ, AxisW>(float4(1, 2, 3, 4));
+//     float4 b = shuffle4<AxisX, AxisX, AxisY, AxisY>(float2(1, 2));
+
+#define TWO_M_SHUFFLE2(size_)                                                \
+    template <int Index0, int Index1>                                        \
+    inline float2 shuffle2(const float##size_ &v) {                          \
+        static_assert(Index0 >= 0 && Index0 >= 0                             \
+                      && Index0 < size_ && Index1 < size_,                   \
+                      "Index out of range");                                 \
+        return {v[Index0], v[Index1]};                                       \
+    }                                                                        \
+
+TWO_M_SHUFFLE2(2);
+TWO_M_SHUFFLE2(3);
+TWO_M_SHUFFLE2(4);
+
+#undef TWO_M_SHUFFLE2
+
+#define TWO_M_SHUFFLE3(size_)                                                \
+    template <int Index0, int Index1, int Index2>                            \
+    inline float3 shuffle3(const float##size_ &v) {                          \
+        static_assert(Index0 >= 0 && Index0 >= 0 && Index2 >= 0              \
+                      && Index0 < size_ && Index1 < size_ && Index2 < size_, \
+                      "Index out of range");                                 \
+        return {v[Index0], v[Index1], v[Index2]};                            \
+    }                                                                        \
+
+TWO_M_SHUFFLE3(2);
+TWO_M_SHUFFLE3(3);
+TWO_M_SHUFFLE3(4);
+
+#undef TWO_M_SHUFFLE3
+
+#define TWO_M_SHUFFLE4(size_)                                                \
+    template <int Index0, int Index1, int Index2, int Index3>                \
+    inline float4 shuffle4(const float##size_ &v) {                          \
+        static_assert(Index0 >= 0 && Index0 >= 0                             \
+                      && Index2 >= 0 && Index3 >= 0                          \
+                      && Index0 < size_ && Index1 < size_                    \
+                      && Index2 < size_ && Index3 < size_,                   \
+                      "Index out of range");                                 \
+        return {v[Index0], v[Index1], v[Index2], v[Index3]};                 \
+    }                                                                        \
+
+TWO_M_SHUFFLE4(2);
+TWO_M_SHUFFLE4(3);
+TWO_M_SHUFFLE4(4);
+
+#undef TWO_M_SHUFFLE4
+
 //
 // Rect
 //
 
-inline Rect::Rect(const Vector2 &position, const Vector2 &size) {
+inline Rect::Rect(const float2 &position, const float2 &size) {
     x = position.x;
     y = position.y;
     w = size.x;
@@ -334,7 +877,7 @@ inline bool Rect::operator!=(const Rect &rect) const {
     return !(*this == rect);
 }
 
-inline bool Rect::contains(const Vector2 &v) const {
+inline bool Rect::contains(const float2 &v) const {
     return v.x >= x && v.y >= v.y && v.x < (w + x) && v.y < (h + y);
 }
 
@@ -343,708 +886,349 @@ inline bool Rect::overlaps(const Rect &rect) const {
             && (rect.y + rect.h) > y && rect.y < (x + h));
 }
 
+inline void pprint(const Rect &rect) {
+    printf("Rect(x: %f, y: %f, w: %f, h: %f)",
+           rect.x, rect.y, rect.w, rect.h);
+}
+
 //
-// Vector2
+// float2
 //
 
-inline Vector2 operator+(const Vector2 &a, const Vector2 &b) {
-    return Vector2{a.x + b.x, a.y + b.y};
-}
-
-inline Vector2 operator-(const Vector2 &a, const Vector2 &b) {
-    return Vector2{a.x - b.x, a.y - b.y};
-}
-
-inline Vector2 operator*(const Vector2 &v, float s) {
-    return Vector2{v.x * s, v.y * s};
-}
-
-inline Vector2 operator*(float s, const Vector2 &v) {
-    return Vector2{s * v.x, s * v.y};
-}
-
-inline Vector2 operator/(const Vector2 &v, float s) {
-    float invs = 1.0f / s;
-    return Vector2{v.x * invs, v.y * invs};
-}
-
-inline Vector2 operator*(const Vector2 &a, const Vector2 &b) {
-    return Vector2{a.x * b.x, a.y * b.y};
-}
-
-inline Vector2 operator/(const Vector2 &a, const Vector2 &b) {
-    return Vector2{a.x / b.x, a.y / b.y};
-}
-
-inline float dot(const Vector2 &a, const Vector2 &b) {
+inline float dot(const float2 &a, const float2 &b) {
     return a.x * b.x + a.y * b.y;
 }
 
-inline Vector2 lerp(const Vector2 &a, const Vector2 &b, float t) {
+inline float2 lerp(const float2 &a, const float2 &b, float t) {
     t = clamp01(t);
-    return Vector2{a.x + (b.x - a.x) * t,
-                   a.y + (b.y - a.y) * t};
+    return float2{a.x + (b.x - a.x) * t,
+                  a.y + (b.y - a.y) * t};
 }
 
-inline Vector2 clamp(const Vector2 &v, float minv, float maxv) {
-    return Vector2{clamp(v.x, minv, maxv),
-                   clamp(v.y, minv, maxv)};
+inline float2 clamp(const float2 &v, float a, float b) {
+    return float2{clamp(v.x, a, b),
+                  clamp(v.y, a, b)};
 }
 
-inline Vector2 clamp01(const Vector2 &v) {
+inline float2 clamp01(const float2 &v) {
     return clamp(v, 0.0f, 1.0f);
 }
 
-inline Vector2 vec_min(const Vector2 &a, const Vector2 &b) {
-    return Vector2{fminf(a.x, b.x), fminf(a.y, b.y)};
+inline float2 vmin(const float2 &a, const float2 &b) {
+    return float2{fminf(a.x, b.x), fminf(a.y, b.y)};
 }
 
-inline Vector2 vec_max(const Vector2 &a, const Vector2 &b) {
-    return Vector2{fmaxf(a.x, b.x), fmaxf(a.y, b.y)};
+inline float2 vmax(const float2 &a, const float2 &b) {
+    return float2{fmaxf(a.x, b.x), fmaxf(a.y, b.y)};
 }
 
-inline Vector2 vec_abs(const Vector2 &v) {
-    return Vector2{fabsf(v.x), fabsf(v.y)};
+inline float2 vabs(const float2 &v) {
+    return float2{fabsf(v.x), fabsf(v.y)};
 }
 
-inline Vector2 reflect(const Vector2 &v, const Vector2 &normal) {
-    float s = 2.0f * dot(v, normal);
-    return Vector2{v.x - s * normal.x,
-                   v.y - s * normal.y};
+inline float2 vfloor(const float2 &v) {
+    return float2{floorf(v.x), floorf(v.y)};
 }
 
-inline Vector2::Vector2(const Vector2i &vec2)
-    : x{float(vec2.x)}, y{float(vec2.y)} {}
-
-inline Vector2::Vector2(const Vector3 &vec3)
-    : x{vec3.x}, y{vec3.y} {}
-
-inline Vector2::Vector2(const Vector4 &vec4)
-    : x{vec4.x}, y{vec4.y} {}
-
-inline Vector2 Vector2::zero() {
-    return Vector2{0.0f, 0.0f};
+inline float2 vceil(const float2 &v) {
+    return float2{ceilf(v.x), ceilf(v.y)};
 }
 
-inline Vector2 Vector2::one() {
-    return Vector2{1.0f, 1.0f};
+inline float2 vsqrt(const float2 &v) {
+    return float2{sqrtf(v.x), sqrtf(v.y)};
 }
 
-inline float Vector2::operator[](int i) const {
-    ASSERT(i >= 0 && i < 2);
-    return ((float *)this)[i];
+inline float2 vrsqrt(const float2 &v) {
+    return float2{rsqrt(v.x), rsqrt(v.y)};
 }
 
-inline float &Vector2::operator[](int i) {
-    ASSERT(i >= 0 && i < 2);
-    return ((float *)this)[i];
-}
-
-inline bool Vector2::operator==(const Vector2 &v) const {
-    return x == v.x && y == v.y;
-}
-
-inline bool Vector2::operator!=(const Vector2 &v) const {
-    return !(*this == v);
-}
-
-inline Vector2 Vector2::operator-() const {
-    return Vector2{-x, -y};
-}
-
-inline Vector2 &Vector2::operator+=(const Vector2 &v) {
-    x += v.x;
-    y += v.y;
-    return *this;
-}
-
-inline Vector2 &Vector2::operator-=(const Vector2 &v) {
-    x -= v.x;
-    y -= v.y;
-    return *this;
-}
-
-inline Vector2 &Vector2::operator*=(float s) {
-    x *= s;
-    y *= s;
-    return *this;
-}
-
-inline Vector2 &Vector2::operator/=(float s) {
-    float invs = 1.0f / s;
-    x *= invs;
-    y *= invs;
-    return *this;
-}
-
-inline Vector2 &Vector2::operator*=(const Vector2 &v) {
-    x *= v.x;
-    y *= v.y;
-    return *this;
-}
-
-inline Vector2 &Vector2::operator/=(const Vector2 &v) {
-    x /= v.x;
-    y /= v.y;
-    return *this;
-}
-
-inline float Vector2::length() const {
-    return sqrtf(x * x + y * y);
-}
-
-inline float Vector2::length_sqr() const {
-    return x * x + y * y;
-}
-
-inline Vector2 Vector2::normalized() const {
-    float len = length();
-    if (len != 0.0f) {
-        float invl = 1.0f / len;
-        return Vector2{x * invl, y * invl};
-    }
-    return Vector2{0.0f, 0.0f};
-}
-
-inline float Vector2::angle(const Vector2 &v) const {
-    float denom = sqrtf(length_sqr() * v.length_sqr());
+// Returns the angle in radians between two vectors.
+inline float vangle_rad(const float2 &a, const float2 &b) {
+    float denom = sqrtf(a.length_sqr() * b.length_sqr());
     if (denom < Epsilon * Epsilon) {
         return 0.0f;
     }
-    return acosf(clamp(dot(*this, v) / denom, -1.0f, 1.0f)) * RadToDeg;
+    return acosf(clamp(dot(a, b) / denom, -1.0f, 1.0f));
+}
+
+// Returns the angle in degrees between two vectors.
+inline float vangle(const float2 &a, const float2 &b) {
+    return vangle_rad(a, b) * RadToDeg;
+}
+
+inline float2 normalize(const float2 &v) {
+    return v / v.length();
+}
+
+inline float2 normalize_safe(const float2 &v) {
+    float len = v.length();
+    if (len == 0.0f) {
+        return float2(0.0f);
+    }
+    return v / len;
+}
+
+inline float2 reflect(const float2 &v, const float2 &normal) {
+    float s = 2.0f * dot(v, normal);
+    return float2{v.x - s * normal.x,
+                  v.y - s * normal.y};
+}
+
+inline void pprint(const float2 &v, const char *label = "") {
+    printf("%s(%f, %f)\n", label, v.x, v.y);
 }
 
 //
-// Vector2i
+// float3
 //
 
-inline Vector2i operator+(const Vector2i &a, const Vector2i &b) {
-    return Vector2i{a.x + b.x, a.y + b.y};
-}
-
-inline Vector2i operator-(const Vector2i &a, const Vector2i &b) {
-    return Vector2i{a.x - b.x, a.y - b.y};
-}
-
-inline Vector2i operator*(const Vector2i &v, int s) {
-    return Vector2i{v.x * s, v.y * s};
-}
-
-inline Vector2i operator*(int s, const Vector2i &v) {
-    return Vector2i{s * v.x, s * v.y};
-}
-
-inline Vector2i operator/(const Vector2i &v, int s) {
-    return Vector2i{v.x / s, v.y / s};
-}
-
-inline Vector2i operator*(const Vector2i &a, const Vector2i &b) {
-    return Vector2i{a.x * b.x, a.y * b.y};
-}
-
-inline Vector2i operator/(const Vector2i &a, const Vector2i &b) {
-    return Vector2i{a.x / b.x, a.y / b.y};
-}
-
-inline int dot(const Vector2i &a, const Vector2i &b) {
-    return a.x * b.x + a.y * b.y;
-}
-
-inline Vector2i clamp(const Vector2i &v, float minv, float maxv) {
-    return Vector2i{int(clamp(v.x, minv, maxv)),
-                    int(clamp(v.y, minv, maxv))};
-}
-
-inline Vector2i reflect(const Vector2i &v, const Vector2i &normal) {
-    int s = 2 * dot(v, normal);
-    return Vector2i{v.x - s * normal.x,
-                    v.y - s * normal.y};
-}
-
-inline Vector2i vec_abs(const Vector2i &v) {
-    return Vector2i{abs(v.x), abs(v.y)};
-}
-
-inline Vector2i::Vector2i(const Vector2 &vec2)
-    : x{int(vec2.x)}, y{int(vec2.y)} {}
-
-inline Vector2i Vector2i::zero() {
-    return Vector2i{0, 0};
-}
-
-inline Vector2i Vector2i::one() {
-    return Vector2i{1, 1};
-}
-
-inline int Vector2i::operator[](int i) const {
-    ASSERT(i >= 0 && i < 2);
-    return ((int  *)this)[i];
-}
-
-inline int &Vector2i::operator[](int i) {
-    ASSERT(i >= 0 && i < 2);
-    return ((int *)this)[i];
-}
-
-inline bool Vector2i::operator==(const Vector2i &v) const {
-    return x == v.x && y == v.y;
-}
-
-inline bool Vector2i::operator!=(const Vector2i &v) const {
-    return !(*this == v);
-}
-
-inline Vector2i Vector2i::operator-() const {
-    return Vector2i{-x, -y};
-}
-
-inline Vector2i &Vector2i::operator+=(const Vector2i &v) {
-    x += v.x;
-    y += v.y;
-    return *this;
-}
-
-inline Vector2i &Vector2i::operator-=(const Vector2i &v) {
-    x -= v.x;
-    y -= v.y;
-    return *this;
-}
-
-inline Vector2i &Vector2i::operator*=(int s) {
-    x *= s;
-    y *= s;
-    return *this;
-}
-
-inline Vector2i &Vector2i::operator/=(int s) {
-    x /= s;
-    y /= s;
-    return *this;
-}
-
-inline Vector2i &Vector2i::operator*=(const Vector2i &v) {
-    x *= v.x;
-    y *= v.y;
-    return *this;
-}
-
-inline Vector2i &Vector2i::operator/=(const Vector2i &v) {
-    x /= v.x;
-    y /= v.y;
-    return *this;
-}
-
-inline float Vector2i::length() const {
-    return sqrtf(x * x + y * y);
-}
-
-inline int Vector2i::length_sqr() const {
-    return x * x + y * y;
-}
-
-//
-// Vector3
-//
-
-inline Vector3 operator+(const Vector3 &a, const Vector3 &b) {
-    return Vector3{a.x + b.x, a.y + b.y, a.z + b.z};
-}
-
-inline Vector3 operator-(const Vector3 &a, const Vector3 &b) {
-    return Vector3{a.x - b.x, a.y - b.y, a.z - b.z};
-}
-
-inline Vector3 operator*(const Vector3 &v, float s) {
-    return Vector3{v.x * s, v.y * s, v.z * s};
-}
-
-inline Vector3 operator*(float s, const Vector3 &v) {
-    return Vector3{s * v.x, s * v.y, s * v.z};
-}
-
-inline Vector3 operator/(const Vector3 &v, float s) {
-    float invs = 1.0f / s;
-    return Vector3{v.x * invs, v.y * invs, v.z * invs};
-}
-
-inline Vector3 operator*(const Vector3 &a, const Vector3 &b) {
-    return Vector3{a.x * b.x, a.y * b.y, a.z * b.z};
-}
-
-inline Vector3 operator/(const Vector3 &a, const Vector3 &b) {
-    return Vector3{a.x / b.x, a.y / b.y, a.z / b.z};
-}
-
-inline float dot(const Vector3 &a, const Vector3 &b) {
+inline float dot(const float3 &a, const float3 &b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-inline Vector3 cross(const Vector3 &a, const Vector3 &b) {
-    return Vector3{a.y * b.z - a.z * b.y,
-                   a.z * b.x - a.x * b.z,
-                   a.x * b.y - a.y * b.x};
+inline float3 cross(const float3 &a, const float3 &b) {
+    return float3{a.y * b.z - a.z * b.y,
+                  a.z * b.x - a.x * b.z,
+                  a.x * b.y - a.y * b.x};
 }
 
-inline Vector3 lerp(const Vector3 &a, const Vector3 &b, float t) {
+inline float3 lerp(const float3 &a, const float3 &b, float t) {
     t = clamp01(t);
-    return Vector3{a.x + (b.x - a.x) * t,
-                   a.y + (b.y - a.y) * t,
-                   a.z + (b.z - a.z) * t};
+    return float3{a.x + (b.x - a.x) * t,
+                  a.y + (b.y - a.y) * t,
+                  a.z + (b.z - a.z) * t};
 }
 
-inline Vector3 clamp(const Vector3 &v, float minv, float maxv) {
-    return Vector3{clamp(v.x, minv, maxv),
-                   clamp(v.y, minv, maxv),
-                   clamp(v.z, minv, maxv)};
+inline float3 clamp(const float3 &v, float a, float b) {
+    return float3{clamp(v.x, a, b),
+                  clamp(v.y, a, b),
+                  clamp(v.z, a, b)};
 }
 
-inline Vector3 clamp01(const Vector3 &v) {
+inline float3 clamp01(const float3 &v) {
     return clamp(v, 0.0f, 1.0f);
 }
 
-inline Vector3 vec_min(const Vector3 &a, const Vector3 &b) {
-    return Vector3{fminf(a.x, b.x),
-                   fminf(a.y, b.y),
-                   fminf(a.z, b.z)};
+inline float3 vmin(const float3 &a, const float3 &b) {
+    return float3{fminf(a.x, b.x),
+                  fminf(a.y, b.y),
+                  fminf(a.z, b.z)};
 }
 
-inline Vector3 vec_max(const Vector3 &a, const Vector3 &b) {
-    return Vector3{fmaxf(a.x, b.x),
-                   fmaxf(a.y, b.y),
-                   fmaxf(a.z, b.z)};
+inline float3 vmax(const float3 &a, const float3 &b) {
+    return float3{fmaxf(a.x, b.x),
+                  fmaxf(a.y, b.y),
+                  fmaxf(a.z, b.z)};
 }
 
-inline Vector3 vec_abs(const Vector3 &v) {
-    return Vector3{fabsf(v.x),
-                   fabsf(v.y),
-                   fabsf(v.z)};
+inline float3 vabs(const float3 &v) {
+    return float3{fabsf(v.x), fabsf(v.y), fabsf(v.z)};
 }
 
-inline Vector3 reflect(const Vector3 &v, const Vector3 &normal) {
-    float s = 2.0f * dot(v, normal);
-    return Vector3{v.x - s * normal.x,
-                   v.y - s * normal.y,
-                   v.z - s * normal.z};
+inline float3 vfloor(const float3 &v) {
+    return float3{floorf(v.x), floorf(v.y), floorf(v.z)};
 }
 
-inline Vector3::Vector3(const Vector2 &vec2)
-    : x{vec2.x}, y{vec2.y}, z{0.0f} {}
-
-inline Vector3::Vector3(const Vector4 &vec4)
-    : x{vec4.x}, y{vec4.y}, z{vec4.z} {}
-
-inline Vector3 Vector3::zero() {
-    return Vector3{0.0f, 0.0f, 0.0f};
+inline float3 vceil(const float3 &v) {
+    return float3{ceilf(v.x), ceilf(v.y), ceilf(v.z)};
 }
 
-inline Vector3 Vector3::one() {
-    return Vector3{1.0f, 1.0f, 1.0f};
+inline float3 vsqrt(const float3 &v) {
+    return float3{sqrtf(v.x), sqrtf(v.y), sqrtf(v.z)};
 }
 
-inline float Vector3::operator[](int i) const {
-    ASSERT(i >= 0 && i < 3);
-    return ((float *)this)[i];
+inline float3 vrsqrt(const float3 &v) {
+    return float3{rsqrt(v.x), rsqrt(v.y), rsqrt(v.z)};
 }
 
-inline float &Vector3::operator[](int i) {
-    ASSERT(i >= 0 && i < 3);
-    return ((float *)this)[i];
+inline float3 normalize(const float3 &v) {
+    return v / v.length();
 }
 
-inline bool Vector3::operator==(const Vector3 &v) const {
-    return x == v.x && y == v.y && z == v.z;
-}
-
-inline bool Vector3::operator!=(const Vector3 &v) const {
-    return !(*this == v);
-}
-
-inline Vector3 Vector3::operator-() const {
-    return Vector3{-x, -y, -z};
-}
-
-inline Vector3 &Vector3::operator+=(const Vector3 &v) {
-    x += v.x;
-    y += v.y;
-    z += v.z;
-    return *this;
-}
-
-inline Vector3 &Vector3::operator-=(const Vector3 &v) {
-    x -= v.x;
-    y -= v.y;
-    z -= v.z;
-    return *this;
-}
-
-inline Vector3 &Vector3::operator*=(float s) {
-    x *= s;
-    y *= s;
-    z *= s;
-    return *this;
-}
-
-inline Vector3 &Vector3::operator/=(float s) {
-    float invs = 1.0f / s;
-    x *= invs;
-    y *= invs;
-    z *= invs;
-    return *this;
-}
-
-inline Vector3 &Vector3::operator*=(const Vector3 &v) {
-    x *= v.x;
-    y *= v.y;
-    z *= v.z;
-    return *this;
-}
-
-inline Vector3 &Vector3::operator/=(const Vector3 &v) {
-    x /= v.x;
-    y /= v.y;
-    z /= v.z;
-    return *this;
-}
-
-inline float Vector3::length() const {
-    return sqrtf(x * x + y * y + z * z);
-}
-
-inline float Vector3::length_sqr() const {
-    return x * x + y * y + z * z;
-}
-
-inline Vector3 Vector3::normalized() const {
-    float len = length();
-    if (len != 0.0f) {
-        float invl = 1.0f / len;
-        return Vector3{x * invl, y * invl, z * invl};
+inline float3 normalize_safe(const float3 &v) {
+    float len = v.length();
+    if (len == 0.0f) {
+        return float3(0.0f);
     }
-    return Vector3{0.0f, 0.0f, 0.0f};
+    return v / len;
+}
+
+inline float3 reflect(const float3 &v, const float3 &normal) {
+    float s = 2.0f * dot(v, normal);
+    return float3{v.x - s * normal.x,
+                  v.y - s * normal.y,
+                  v.z - s * normal.z};
+}
+
+inline void pprint(const float3 &v, const char *label = "") {
+    printf("%s(%f, %f, %f)\n", label, v.x, v.y, v.z);
 }
 
 //
-// Vector4
+// float4
 //
 
-inline Vector4 operator+(const Vector4 &a, const Vector4 &b) {
-#ifdef TWO_SSE
-    return Vector4{_mm_add_ps(a.m128, b.m128)};
-#else
-    return Vector4{a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
-#endif
-}
-
-inline Vector4 operator-(const Vector4 &a, const Vector4 &b) {
-#ifdef TWO_SSE
-    return Vector4{_mm_sub_ps(a.m128, b.m128)};
-#else
-    return Vector4{a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
-#endif
-}
-
-inline Vector4 operator*(const Vector4 &v, float s) {
-    return Vector4{v.x * s, v.y * s, v.z * s, v.w * s};
-}
-
-inline Vector4 operator*(float s, const Vector4 &v) {
-    return Vector4{s * v.x, s * v.y, s * v.z, s * v.w};
-}
-
-inline Vector4 operator/(const Vector4 &v, float s) {
-    float invs = 1.0f / s;
-    return Vector4{v.x * invs, v.y * invs, v.z * invs, v.w * invs};
-}
-
-inline Vector4 operator*(const Vector4 &a, const Vector4 &b) {
-#ifdef TWO_SSE
-    return Vector4{_mm_mul_ps(a.m128, b.m128)};
-#else
-    return Vector4{a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
-#endif
-}
-
-inline Vector4 operator/(const Vector4 &a, const Vector4 &b) {
-#ifdef TWO_SSE
-    return Vector4{_mm_div_ps(a.m128, b.m128)};
-#else
-    return Vector4{a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
-#endif
-}
-
-inline float dot(const Vector4 &a, const Vector4 &b) {
+inline float dot(const float4 &a, const float4 &b) {
     return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
-inline Vector4 lerp(const Vector4 &a, const Vector4 &b, float t) {
+inline float4 lerp(const float4 &a, const float4 &b, float t) {
     t = clamp01(t);
-    return Vector4{a.x + (b.x - a.x) * t,
-                   a.y + (b.y - a.y) * t,
-                   a.z + (b.z - a.z) * t,
-                   a.w + (b.w - a.w) * t};
+    return float4{a.x + (b.x - a.x) * t,
+                  a.y + (b.y - a.y) * t,
+                  a.z + (b.z - a.z) * t,
+                  a.w + (b.w - a.w) * t};
 }
 
-inline Vector4 clamp(const Vector4 &v, float minv, float maxv) {
-    return Vector4{clamp(v.x, minv, maxv),
-                   clamp(v.y, minv, maxv),
-                   clamp(v.z, minv, maxv),
-                   clamp(v.w, minv, maxv)};
+inline float4 clamp(const float4 &v, float a, float b) {
+    return float4{clamp(v.x, a, b),
+                  clamp(v.y, a, b),
+                  clamp(v.z, a, b),
+                  clamp(v.w, a, b)};
 }
 
-inline Vector4 clamp01(const Vector4 &v) {
+inline float4 clamp01(const float4 &v) {
     return clamp(v, 0.0f, 1.0f);
 }
 
-inline Vector4 vec_min(const Vector4 &a, const Vector4 &b) {
-    return Vector4{fminf(a.x, b.x),
-                   fminf(a.y, b.y),
-                   fminf(a.z, b.z),
-                   fminf(a.w, b.w)};
+inline float4 vmin(const float4 &a, const float4 &b) {
+    return float4{fminf(a.x, b.x),
+                  fminf(a.y, b.y),
+                  fminf(a.z, b.z),
+                  fminf(a.w, b.w)};
 }
 
-inline Vector4 vec_max(const Vector4 &a, const Vector4 &b) {
-    return Vector4{fmaxf(a.x, b.x),
-                   fmaxf(a.y, b.y),
-                   fmaxf(a.z, b.z),
-                   fmaxf(a.w, b.w)};
+inline float4 vmax(const float4 &a, const float4 &b) {
+    return float4{fmaxf(a.x, b.x),
+                  fmaxf(a.y, b.y),
+                  fmaxf(a.z, b.z),
+                  fmaxf(a.w, b.w)};
 }
 
-inline Vector4 vec_abs(const Vector4 &v) {
-    return Vector4{fabsf(v.x),
-                   fabsf(v.y),
-                   fabsf(v.z),
-                   fabsf(v.w)};
+inline float4 vabs(const float4 &v) {
+    return float4{fabsf(v.x), fabsf(v.y), fabsf(v.z), fabsf(v.w)};
 }
 
-inline void pprint(const Vector4 &v) {
-    printf("(%f, %f, %f, %f)\n", v.x, v.y, v.z, v.w);
+inline float4 vfloor(const float4 &v) {
+    return float4{floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w)};
 }
 
-inline Vector4::Vector4(float x, float y, float z, float w) {
-#ifdef TWO_SSE
-    m128 = _mm_set_ps(w, z, y, x);
-#else
-    *this = {x, w, z, w};
-#endif
+inline float4 vceil(const float4 &v) {
+    return float4{ceilf(v.x), ceilf(v.y), ceilf(v.z), ceilf(v.w)};
 }
 
-inline Vector4::Vector4(const Vector2 &vec2)
-    : x{vec2.x}, y{vec2.y}, z{0.0f}, w{0.0f} {}
-
-inline Vector4::Vector4(const Vector3 &vec3)
-    : x{vec3.x}, y{vec3.y}, z{vec3.z}, w{0.0f} {}
-
-inline Vector4::Vector4(float s) {
-#ifdef TWO_SSE
-    m128 = _mm_set1_ps(s);
-#else
-    *this = {s, s, s, s};
-#endif
+inline float4 vsqrt(const float4 &v) {
+    return float4{sqrtf(v.x), sqrtf(v.y), sqrtf(v.z), sqrtf(v.w)};
 }
 
-inline Vector4 Vector4::zero() {
-    return Vector4{0.0f};
+inline float4 vrsqrt(const float4 &v) {
+    return float4{rsqrt(v.x), rsqrt(v.y), rsqrt(v.z), rsqrt(v.w)};
 }
 
-inline Vector4 Vector4::one() {
-    return Vector4{1.0f};
+inline float4 normalize(const float4 &v) {
+    return v / v.length();
 }
 
-inline float Vector4::operator[](int i) const {
-    ASSERT(i >= 0 && i < 4);
-    return ((float *)this)[i];
-}
-
-inline float &Vector4::operator[](int i) {
-    ASSERT(i >= 0 && i < 4);
-    return ((float *)this)[i];
-}
-
-inline bool Vector4::operator==(const Vector4 &v) const {
-#ifdef TWO_SSE
-    return (_mm_movemask_ps(_mm_cmpeq_ps(m128, v.m128)) & 0xf) == 0xf;
-#else
-    return x == v.x && y == v.y && z == v.z && w == v.w;
-#endif
-}
-
-inline bool Vector4::operator!=(const Vector4 &v) const {
-    return !(*this == v);
-}
-
-inline Vector4 Vector4::operator-() const {
-#ifdef TWO_SSE
-    __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
-    return Vector4{_mm_xor_ps(m128, mask)};
-#else
-    return Vector4{-x, -y, -z, -w};
-#endif
-}
-
-inline Vector4 &Vector4::operator+=(const Vector4 &v) {
-    x += v.x;
-    y += v.y;
-    z += v.z;
-    w += v.w;
-    return *this;
-}
-
-inline Vector4 &Vector4::operator-=(const Vector4 &v) {
-    x -= v.x;
-    y -= v.y;
-    z -= v.z;
-    w -= v.w;
-    return *this;
-}
-
-inline Vector4 &Vector4::operator*=(float s) {
-    x *= s;
-    y *= s;
-    z *= s;
-    w *= s;
-    return *this;
-}
-
-inline Vector4 &Vector4::operator/=(float s) {
-    float invs = 1.0f / s;
-    x *= invs;
-    y *= invs;
-    z *= invs;
-    w *= invs;
-    return *this;
-}
-
-inline Vector4 &Vector4::operator*=(const Vector4 &v) {
-    x *= v.x;
-    y *= v.y;
-    z *= v.z;
-    w *= v.z;
-    return *this;
-}
-
-inline Vector4 &Vector4::operator/=(const Vector4 &v) {
-    x /= v.x;
-    y /= v.y;
-    z /= v.z;
-    w /= v.z;
-    return *this;
-}
-
-inline float Vector4::length() const {
-    return sqrtf(x * x + y * y + z * z + w * w);
-}
-
-inline float Vector4::length_sqr() const {
-    return x * x + y * y + z * z + w * w;
-}
-
-inline Vector4 Vector4::normalized() const {
-    float len = length();
-    if (len != 0.0f) {
-        float invl = 1.0f / len;
-        return Vector4{x * invl, y * invl, z * invl, w * invl};
+inline float4 normalize_safe(const float4 &v) {
+    float len = v.length();
+    if (len == 0.0f) {
+        return float3(0.0f);
     }
-    return Vector4{0.0f, 0.0f, 0.0f, 0.0f};
+    return v / len;
+}
+
+inline void pprint(const float4 &v, const char *label = "") {
+    printf("%s(%f, %f, %f, %f)\n", label, v.x, v.y, v.z, v.w);
+}
+
+//
+// int2
+//
+
+inline int2 clampi(const int2 &v, int a, int b) {
+    return int2{clampi(v.x, a, b),
+                clampi(v.y, a, b)};
+}
+
+inline int2 vabs(const int2 &v) {
+    return int2{abs(v.x), abs(v.y)};
+}
+
+inline int2 vmin(const int2 &a, const int2 &b) {
+    return int2{std::min(a.x, b.x),
+                std::min(a.y, b.y)};
+}
+
+inline int2 vmax(const int2 &a, const int2 &b) {
+    return int2{std::max(a.x, b.x),
+                std::max(a.y, b.y)};
+}
+
+inline void pprint(const int2 &v, const char *label = "") {
+    printf("%s(%d, %d)\n", label, v.x, v.y);
+}
+
+//
+// int3
+//
+
+inline int3 clampi(const int3 &v, int a, int b) {
+    return int3{clampi(v.x, a, b),
+                clampi(v.y, a, b),
+                clampi(v.z, a, b)};
+}
+
+inline int3 vabs(const int3 &v) {
+    return int3{abs(v.x), abs(v.y), abs(v.z)};
+}
+
+inline int3 vmin(const int3 &a, const int3 &b) {
+    return int3{std::min(a.x, b.x),
+                std::min(a.y, b.y),
+                std::min(a.z, b.z)};
+}
+
+inline int3 vmax(const int3 &a, const int3 &b) {
+    return int3{std::max(a.x, b.x),
+                std::max(a.y, b.y),
+                std::max(a.z, b.z)};
+}
+
+inline void pprint(const int3 &v, const char *label = "") {
+    printf("%s(%d, %d, %d)\n", label, v.x, v.y, v.z);
+}
+
+//
+// int4
+//
+
+inline int4 clampi(const int4 &v, int a, int b) {
+    return int4{clampi(v.x, a, b),
+                clampi(v.y, a, b),
+                clampi(v.z, a, b),
+                clampi(v.w, a, b)};
+}
+
+inline int4 vabs(const int4 &v) {
+    return int4{abs(v.x), abs(v.y), abs(v.z), abs(v.w)};
+}
+
+inline int4 vmin(const int4 &a, const int4 &b) {
+    return int4{std::min(a.x, b.x),
+                std::min(a.y, b.y),
+                std::min(a.z, b.z),
+                std::min(a.w, b.w)};
+}
+
+inline int4 vmax(const int4 &a, const int4 &b) {
+    return int4{std::max(a.x, b.x),
+                std::max(a.y, b.y),
+                std::max(a.z, b.z),
+                std::max(a.w, b.w)};
+}
+
+inline void pprint(const int4 &v, const char *label = "") {
+    printf("%s(%d, %d, %d, %d)\n", label, v.x, v.y, v.z, v.w);
 }
 
 } // two

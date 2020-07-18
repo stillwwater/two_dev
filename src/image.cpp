@@ -103,7 +103,7 @@ int Image::pitch() const {
     return bytes_per_pixel(pixelformat) * w;
 }
 
-Color Image::read(const Vector2i &xy) const {
+Color Image::read(const int2 &xy) const {
     ASSERT(xy.x >= 0 && xy.y >= 0 && xy.x < w && xy.y < h);
     Color c;
     int p;
@@ -148,7 +148,7 @@ Color Image::read(const Vector2i &xy) const {
     return c;
 };
 
-void Image::write(const Vector2i &xy, const Color &c) {
+void Image::write(const int2 &xy, const Color &c) {
     ASSERT(xy.x >= 0 && xy.y >= 0 && xy.x < w && xy.y < h);
     int p = 0;
 
@@ -214,14 +214,14 @@ Image *Image::convert(PixelFormat pixelformat) const {
     ASSERT(dst->data != nullptr && this->data != nullptr);
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
-            Vector2i xy{x, y};
+            int2 xy{x, y};
             dst->write(xy, read(xy));
         }
     }
     return dst;
 }
 
-void Image::paste(Image *im, const Vector2i &xy) {
+void Image::paste(Image *im, const int2 &xy) {
     if (im->pixelformat != pixelformat) {
         // We could convert here but that would allocate memory every time
         // which we may not want to do.
@@ -233,13 +233,13 @@ void Image::paste(Image *im, const Vector2i &xy) {
 
     for (int v = xy.x; v < dst_w; ++v) {
         for (int u = xy.y; u < dst_h; ++u) {
-            auto color = im->read(Vector2i{u - xy.x, v - xy.y});
-            write(Vector2i{u, v}, color);
+            auto color = im->read(int2{u - xy.x, v - xy.y});
+            write(int2{u, v}, color);
         }
     }
 }
 
-Vector3 color_to_hsv(const Color &rgb) {
+float3 color_to_hsv(const Color &rgb) {
     double h, s, v;
     auto norm = rgb.normalized();
     double r = norm.x;
@@ -252,7 +252,7 @@ Vector3 color_to_hsv(const Color &rgb) {
 
     v = max;
     if (chroma < Epsilon || v <= 0.0) {
-        return Vector3(0.0f, 0.0f, v);
+        return float3(0.0f, 0.0f, v);
     }
     s = chroma / v;
     if (r >= v)
@@ -262,10 +262,10 @@ Vector3 color_to_hsv(const Color &rgb) {
     else
         h = 4.0 + (r - g) / chroma;
     h /= 6.0;
-    return Vector3{float(h), float(s), float(v)};
+    return float3{float(h), float(s), float(v)};
 }
 
-Color hsv_to_color(const Vector3 &hsv) {
+Color hsv_to_color(const float3 &hsv) {
     double h = clamp01(hsv.x);
     double s = clamp01(hsv.y);
     double v = clamp01(hsv.z);
@@ -278,7 +278,7 @@ Color hsv_to_color(const Vector3 &hsv) {
     double y = v * (1.0 - s * f);
     double z = v * (1.0 - s * (1.0 - f));
 
-    Vector4 color;
+    float4 color;
     color.w = 1.0f;
 
     switch (h2) {

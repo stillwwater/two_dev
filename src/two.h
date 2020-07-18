@@ -50,14 +50,14 @@ extern std::unique_ptr<Profiler> profiler;
 // Camera component
 struct Camera {
     // How many pixels per world unit.
-    Vector2i tilesize;
+    int2 tilesize;
 
     // The color to use when clearing the screen.
     Color background;
 
     // Position in world units.
     // The camera will be centered on this position.
-    Vector2 position;
+    float2 position;
 
     // How much to scale the world by when rendering. This is useful for
     // pixel art where sprites are low resolution but you want to render
@@ -87,14 +87,14 @@ struct Camera {
         , scale{1.0f}
         , background_is_clear_color{false} {}
 
-    Camera(int tilesize, Color background, Vector2 position)
+    Camera(int tilesize, Color background, float2 position)
         : tilesize{tilesize, tilesize}
         , background{background}
         , position{position}
         , scale{1.0f}
         , background_is_clear_color{false} {}
 
-    Camera(Vector2i tilesize, Color background, Vector2 position)
+    Camera(int2 tilesize, Color background, float2 position)
         : tilesize{tilesize}
         , background{background}
         , position{position}
@@ -104,10 +104,10 @@ struct Camera {
 
 struct ShadowEffect {
     Color color;
-    Vector2 offset;
+    float2 offset;
 
     ShadowEffect() = default;
-    ShadowEffect(const Color &color, const Vector2 &offset)
+    ShadowEffect(const Color &color, const float2 &offset)
         : color{color}, offset{offset} {}
 };
 
@@ -163,10 +163,10 @@ int run();
 
 
 // Convert world to screen (pixel) coordinates.
-Vector2i world_to_screen(const Vector2 &v, const Camera &camera);
+int2 world_to_screen(const float2 &v, const Camera &camera);
 
 // Convert screen to world coordinates.
-Vector2 screen_to_world(const Vector2i &v, const Camera &camera);
+float2 screen_to_world(const int2 &v, const Camera &camera);
 
 // Registers an event handler with the main `EventDisptacher`.
 // Example:
@@ -205,7 +205,7 @@ void pump();
 
 // Gets the current mouse position in pixels. To convert to world units
 // use `screen_to_world()`.
-Vector2i mouse_position();
+int2 mouse_position();
 
 // Returns true if the specified mouse button is currently pressed.
 bool get_mouse_button(int button);

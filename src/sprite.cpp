@@ -145,16 +145,16 @@ void SpriteRenderer::draw(World *world) {
     // Existence of a camera is checked by the Background Renderer
     auto &camera = world->unpack_one<Camera>();
     auto cam_scale = camera.scale;
-    auto tilesizef = Vector2(camera.tilesize) * cam_scale;
-    auto cam_offset = Vector2i(camera.position * tilesizef);
+    auto tilesizef = float2(camera.tilesize) * cam_scale;
+    auto cam_offset = int2(camera.position * tilesizef);
 
     int screen_w, screen_h;
     SDL_RenderGetLogicalSize(gfx, &screen_w, &screen_h);
-    Vector2i screen_wh_2{screen_w / 2, screen_h / 2};
+    int2 screen_wh_2{screen_w / 2, screen_h / 2};
 
     const auto &entities = world->view<Transform, Sprite>();
     sort_sprites(world, entities, sprite_buffer);
-    Vector2 v[4];
+    float2 v[4];
 
     for (auto entity : sprite_buffer) {
         auto &transform = world->unpack<Transform>(entity);
@@ -176,7 +176,7 @@ void SpriteRenderer::draw(World *world) {
         float st = sinf(theta);
         float ct = cosf(theta);
 
-        Vector2 r;
+        float2 r;
         r.x = ct*v[0].x - st*v[0].y + transform.position.x;
         r.y = st*v[0].x + ct*v[0].y + transform.position.y;
         v[0] = r;
@@ -194,19 +194,19 @@ void SpriteRenderer::draw(World *world) {
         v[3] = r;
 
         // World to screen projection
-        v[0] = (Vector2i(v[0] * tilesizef) + screen_wh_2) - cam_offset;
-        v[1] = (Vector2i(v[1] * tilesizef) + screen_wh_2) - cam_offset;
-        v[2] = (Vector2i(v[2] * tilesizef) + screen_wh_2) - cam_offset;
-        v[3] = (Vector2i(v[3] * tilesizef) + screen_wh_2) - cam_offset;
+        v[0] = float2((int2(v[0] * tilesizef) + screen_wh_2) - cam_offset);
+        v[1] = float2((int2(v[1] * tilesizef) + screen_wh_2) - cam_offset);
+        v[2] = float2((int2(v[2] * tilesizef) + screen_wh_2) - cam_offset);
+        v[3] = float2((int2(v[3] * tilesizef) + screen_wh_2) - cam_offset);
 
         // Culling
-        auto box_min = vec_min(v[0], v[1]);
-        box_min = vec_min(box_min, v[2]);
-        box_min = vec_min(box_min, v[3]);
+        auto box_min = vmin(v[0], v[1]);
+        box_min = vmin(box_min, v[2]);
+        box_min = vmin(box_min, v[3]);
 
-        auto box_max = vec_max(v[0], v[1]);
-        box_max = vec_max(box_max, v[2]);
-        box_max = vec_max(box_max, v[3]);
+        auto box_max = vmax(v[0], v[1]);
+        box_max = vmax(box_max, v[2]);
+        box_max = vmax(box_max, v[3]);
 
         if (box_min.x > screen_w || box_min.y > screen_h
             || box_max.x < 0.0f || box_max.y < 0.0f) {
@@ -214,14 +214,14 @@ void SpriteRenderer::draw(World *world) {
         }
 
         // Offset in pixels
-        Vector2 ws = (Vector2i(transform.position * tilesizef)
-                   + screen_wh_2) - cam_offset;
+        float2 ws = float2((int2(transform.position * tilesizef)
+                  + screen_wh_2) - cam_offset);
 
         SDL_Rect src{int(sprite.rect.x), int(sprite.rect.y),
                      int(sprite.rect.w), int(sprite.rect.h)};
 
-        auto scale = transform.scale * Vector2(src.w, src.h) * cam_scale;
-        auto offset = Vector2(ws) - origin * scale;
+        auto scale = transform.scale * float2(src.w, src.h) * cam_scale;
+        auto offset = float2(ws) - origin * scale;
 
         SDL_Rect dst{int(offset.x), int(offset.y),
                      int(scale.x), int(scale.y)};
