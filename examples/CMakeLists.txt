@@ -40,7 +40,7 @@ add_definitions(
 )
 
 set(TWO_EXAMPLES_MODULES
-    sokoban.cpp
+    noise.cpp
 )
 
 add_executable(examples ${TWO_EXAMPLES_MODULES})

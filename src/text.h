@@ -108,6 +108,25 @@ struct Text {
         , wrap{Overflow} {}
 };
 
+// FPS Component, add this to an entity with a text component
+// and add a FrameTimer System.
+struct FpsDisplay {
+    enum DisplayUnit { FPS, Miliseconds, All };
+    DisplayUnit unit;
+
+    // Time to wait in seconds before updating the fps counter
+    float interval;
+
+    // How much time has passed since the last fps update
+    float time;
+
+    FpsDisplay() = default;
+    FpsDisplay(DisplayUnit unit)
+        : unit{unit}
+        , interval{0.1f}
+        , time{0.0f} {}
+};
+
 // Loads a font from a .fnt (AngelCode BMFont) binary file.
 // Page is which page to use in the font file since a .fnt file can contain
 // more than one font variants.
@@ -142,6 +161,19 @@ public:
 private:
     std::vector<bool> wrap_info_cache;
 };
+
+class FrameTimer : public System {
+public:
+    void update(World *world, float dt) override;
+};
+
+// Convinience function to add an entity with a FpsDisplay, Text and
+// PixelTransform component, as well as adding a FrameTimer system
+// to the world. Returns a reference to the fps component so that
+// it can be configured.
+FpsDisplay &make_fps_display(World *world,
+                             const std::shared_ptr<Font> &font, // Remove
+                             const Color &color = Color::White);
 
 } // two
 

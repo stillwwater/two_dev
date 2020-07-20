@@ -81,7 +81,7 @@ void create_window(const char *title, int width, int height) {
 
     SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
     gfx = SDL_CreateRenderer(
-        window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        window, 0, SDL_RENDERER_ACCELERATED | /*SDL_RENDERER_PRESENTVSYNC*/ 0);
 
     set_logical_size(width, height);
 }

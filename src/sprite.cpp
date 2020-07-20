@@ -38,8 +38,8 @@ Texture make_texture(const Image *im, const Rect &rect) {
         src = im->convert(Image::RGBA32);
     }
 
-    auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA32,
-                                  SDL_TEXTUREACCESS_STATIC,
+    auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA8888,
+                                  SDL_TEXTUREACCESS_TARGET,
                                   im->width(), im->height());
     ASSERT(tex != nullptr);
 
@@ -56,6 +56,11 @@ Texture make_texture(const Image *im, const Rect &rect) {
 Texture make_texture(const Image *im) {
     Rect rect{0, 0, float(im->width()), float(im->height())};
     return make_texture(im, rect);
+}
+
+void update_texture(const Texture &tex, const Image *im) {
+    ASSERT(im->get_pixelformat() == Image::RGBA32);
+    SDL_UpdateTexture(tex.get(), nullptr, (const void *)im->pixels(), im->pitch());
 }
 
 Optional<Sprite> load_sprite(const std::string &image_asset) {
@@ -82,7 +87,7 @@ Sprite blank_sprite(const Color &color) {
     static Texture blank = nullptr;
     if (UNLIKELY(blank == nullptr)) {
         unsigned char pixels[]{255, 255, 255, 255};
-        auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA32,
+        auto *tex = SDL_CreateTexture(gfx, SDL_PIXELFORMAT_RGBA8888,
                                       SDL_TEXTUREACCESS_STATIC, 1, 1);
 
         SDL_UpdateTexture(tex, nullptr, (const void *)&pixels, sizeof(pixels));

@@ -71,6 +71,8 @@ set(TWO_SRC_MODULES
     src/sprite.cpp
     src/text.h
     src/text.cpp
+    src/noise.h
+    src/noise.cpp
     src/two.h
     src/two.cpp
 )

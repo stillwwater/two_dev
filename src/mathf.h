@@ -20,6 +20,7 @@
 #define TWO_MATHF_H
 
 #include <type_traits>
+#include <algorithm> // min, max
 #include <cmath>
 #include <cstdint>
 
@@ -44,6 +45,16 @@ constexpr int AxisX = 0;
 constexpr int AxisY = 1;
 constexpr int AxisZ = 2;
 constexpr int AxisW = 3;
+
+union IntFloatUnion {
+    uint32_t i32;
+    float f;
+};
+
+union IntDoubleUnion {
+    uint64_t i64;
+    double d;
+};
 
 namespace internal {
     template <typename T>
@@ -160,10 +171,13 @@ struct Vector4_t {
     union {
         // Only use with float vector
         __m128 m128;
+        // Only use with int vector
+        __m128i m128i;
         struct { T x, y, z, w; };
     };
 
     Vector4_t<float>(__m128 m) : m128{m} {}
+    Vector4_t<int>(__m128i m) : m128i{m} {}
 #else
     T x, y, z, w;
 #endif
@@ -347,7 +361,7 @@ inline float Vector2_t<T>::length_sqr() const {
 //
 
 template <typename T>
-inline Vector2_t<T> operator+(const Vector3_t<T> &a, const Vector3_t<T> &b) {
+inline Vector3_t<T> operator+(const Vector3_t<T> &a, const Vector3_t<T> &b) {
     return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
@@ -373,7 +387,7 @@ inline Vector3_t<T> operator*(const Vector3_t<T> &v, float s) {
 
 template <typename T>
 inline Vector3_t<T> operator*(float s, const Vector3_t<T> &v) {
-    return {s * v.x, s * v.y, v.z * s};
+    return {s * v.x, s * v.y, s * v.z};
 }
 
 template <typename T>
@@ -529,6 +543,24 @@ inline float4 float4::operator-() const {
     __m128 mask = _mm_castsi128_ps(_mm_set1_epi32(0x80000000));
     return float4{_mm_xor_ps(m128, mask)};
 }
+
+inline int4 operator+(const int4 &a, const int4 &b) {
+    return int4{_mm_add_epi32(a.m128i, b.m128i)};
+}
+
+inline int4 operator-(const int4 &a, const int4 &b) {
+    return int4{_mm_sub_epi32(a.m128i, b.m128i)};
+}
+
+template <>
+inline Vector4_t<int>::Vector4_t(int x, int y, int z, int w) {
+    m128i = _mm_set_epi32(w, z, y, x);
+}
+
+template<>
+inline Vector4_t<int>::Vector4_t(int s) {
+    m128i = _mm_set1_epi32(s);
+}
 #endif // TWO_SSE
 
 template <typename T>
@@ -558,7 +590,7 @@ inline Vector4_t<T> operator*(const Vector4_t<T> &v, float s) {
 
 template <typename T>
 inline Vector4_t<T> operator*(float s, const Vector4_t<T> &v) {
-    return {s * v.x, s * v.y, v.z * s, v.w * s};
+    return {s * v.x, s * v.y, s * v.z, s * v.w};
 }
 
 template <typename T>
@@ -744,6 +776,11 @@ inline float rsqrt(float value) {
     return 1.0f / sqrtf(value);
 }
 
+inline int floortoi(float value) {
+    int x = int(value);
+    return value < x ? x - 1 : x;
+}
+
 inline float clamp(float value, float a, float b) {
     // Both clang and MSVC will remove the branch using simd instructions
     if (value < a) return a;
@@ -779,6 +816,17 @@ inline float remap(float a, float b, float c, float d, float x) {
     return lerp(c, d, unlerp(a, b, x));
 }
 
+// Returns the smooth Hermite interpolation between 0 and 1 for t in [a, b]
+inline float smoothstep(float a, float b, float t) {
+    t = clamp01((t - a) / (b - a));
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// Returns 1 if x >= edge and 0 otherwise.
+inline float stepf(float edge, float x) {
+    return float(x >= edge);
+}
+
 // Returns 1 if value is positive, -1 if value is negative and 0 otherwise.
 inline float signf(float value) {
     if (value > 0.0f) return 1.0f;
@@ -809,7 +857,7 @@ inline uint64_t next_pow2(uint64_t value) {
 
 #define TWO_M_SHUFFLE2(size_)                                                \
     template <int Index0, int Index1>                                        \
-    inline float2 shuffle2(const float##size_ &v) {                          \
+    inline float2 shuffle(const float##size_ &v) {                           \
         static_assert(Index0 >= 0 && Index0 >= 0                             \
                       && Index0 < size_ && Index1 < size_,                   \
                       "Index out of range");                                 \
@@ -824,7 +872,7 @@ TWO_M_SHUFFLE2(4);
 
 #define TWO_M_SHUFFLE3(size_)                                                \
     template <int Index0, int Index1, int Index2>                            \
-    inline float3 shuffle3(const float##size_ &v) {                          \
+    inline float3 shuffle(const float##size_ &v) {                           \
         static_assert(Index0 >= 0 && Index0 >= 0 && Index2 >= 0              \
                       && Index0 < size_ && Index1 < size_ && Index2 < size_, \
                       "Index out of range");                                 \
@@ -839,7 +887,7 @@ TWO_M_SHUFFLE3(4);
 
 #define TWO_M_SHUFFLE4(size_)                                                \
     template <int Index0, int Index1, int Index2, int Index3>                \
-    inline float4 shuffle4(const float##size_ &v) {                          \
+    inline float4 shuffle(const float##size_ &v) {                           \
         static_assert(Index0 >= 0 && Index0 >= 0                             \
                       && Index2 >= 0 && Index3 >= 0                          \
                       && Index0 < size_ && Index1 < size_                    \
@@ -914,6 +962,10 @@ inline float2 clamp01(const float2 &v) {
     return clamp(v, 0.0f, 1.0f);
 }
 
+inline float2 vstep(const float2 &edge, const float2 &v) {
+    return float2(v.x >= edge.x, v.y >= edge.y);
+}
+
 inline float2 vmin(const float2 &a, const float2 &b) {
     return float2{fminf(a.x, b.x), fminf(a.y, b.y)};
 }
@@ -954,6 +1006,10 @@ inline float vangle_rad(const float2 &a, const float2 &b) {
 // Returns the angle in degrees between two vectors.
 inline float vangle(const float2 &a, const float2 &b) {
     return vangle_rad(a, b) * RadToDeg;
+}
+
+inline float2 frac(const float2 &v) {
+    return v - vfloor(v);
 }
 
 inline float2 normalize(const float2 &v) {
@@ -1009,6 +1065,10 @@ inline float3 clamp01(const float3 &v) {
     return clamp(v, 0.0f, 1.0f);
 }
 
+inline float3 vstep(const float3 &edge, const float3 &v) {
+    return float3(v.x >= edge.x, v.y >= edge.y, v.z >= edge.z);
+}
+
 inline float3 vmin(const float3 &a, const float3 &b) {
     return float3{fminf(a.x, b.x),
                   fminf(a.y, b.y),
@@ -1039,6 +1099,10 @@ inline float3 vsqrt(const float3 &v) {
 
 inline float3 vrsqrt(const float3 &v) {
     return float3{rsqrt(v.x), rsqrt(v.y), rsqrt(v.z)};
+}
+
+inline float3 frac(const float3 &v) {
+    return v - vfloor(v);
 }
 
 inline float3 normalize(const float3 &v) {
@@ -1091,6 +1155,13 @@ inline float4 clamp01(const float4 &v) {
     return clamp(v, 0.0f, 1.0f);
 }
 
+inline float4 vstep(const float4 &edge, const float4 &v) {
+    return float4(v.x >= edge.x,
+                  v.y >= edge.y,
+                  v.z >= edge.z,
+                  v.w >= edge.w);
+}
+
 inline float4 vmin(const float4 &a, const float4 &b) {
     return float4{fminf(a.x, b.x),
                   fminf(a.y, b.y),
@@ -1123,6 +1194,10 @@ inline float4 vsqrt(const float4 &v) {
 
 inline float4 vrsqrt(const float4 &v) {
     return float4{rsqrt(v.x), rsqrt(v.y), rsqrt(v.z), rsqrt(v.w)};
+}
+
+inline float4 frac(const float4 &v) {
+    return v - vfloor(v);
 }
 
 inline float4 normalize(const float4 &v) {

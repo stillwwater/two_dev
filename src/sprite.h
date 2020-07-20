@@ -99,6 +99,8 @@ Texture make_texture(const Image *im, const Rect &rect);
 
 Texture make_texture(const Image *im);
 
+void update_texture(const Texture &tex, const Image *im);
+
 // Load a sprite asset from from an asset file.
 Optional<Sprite> load_sprite(const std::string &image_asset);
 

@@ -44,7 +44,12 @@ struct Color {
 
     // Creates a color from a float4 by multiplying each component in the
     // vector by 255. The vector will be clamped to be between 0.0f and 1.0f.
-    Color(const float4 &vec4);
+    explicit Color(const float4 &rgba);
+
+    // Creates a color from a float4 by multiplying each component in the
+    // vector by 255 using an alpha value of 255.
+    // The vector will be clamped to be between 0.0f and 1.0f.
+    explicit Color(const float3 &rgb);
 
     unsigned char operator[](int i) const;
     unsigned char &operator[](int i);
@@ -188,6 +193,13 @@ inline Color::Color(const float4 &rgba) {
     g = static_cast<unsigned char>(clamp01(rgba.y) * 255.0f);
     b = static_cast<unsigned char>(clamp01(rgba.z) * 255.0f);
     a = static_cast<unsigned char>(clamp01(rgba.w) * 255.0f);
+}
+
+inline Color::Color(const float3 &rgb) {
+    r = static_cast<unsigned char>(clamp01(rgb.x) * 255.0f);
+    g = static_cast<unsigned char>(clamp01(rgb.y) * 255.0f);
+    b = static_cast<unsigned char>(clamp01(rgb.z) * 255.0f);
+    a = 255;
 }
 
 inline unsigned char Color::operator[](int i) const {

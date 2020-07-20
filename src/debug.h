@@ -86,7 +86,7 @@
 
 namespace two {
 
-// Time is gin in microseconds.
+// Time given in microseconds.
 struct TimeStamp {
     const char *name;
     int64_t start, end;

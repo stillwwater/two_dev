@@ -342,4 +342,47 @@ void FontRenderer::draw(World *world) {
     }
 }
 
+FpsDisplay &make_fps_display(World *world,
+                            const std::shared_ptr<Font> &font, // Remove
+                            const Color &color) {
+    auto entity = world->make_entity();
+    world->make_system<FrameTimer>();
+    world->pack(entity, Text{font, "---", color});
+    world->pack(entity, ShadowEffect{Color::Black, {0.0f, 2.0f}});
+    world->pack(entity, PixelTransform{{10.0f, 10.0f}});
+    return world->pack(entity, FpsDisplay{FpsDisplay::FPS});
+}
+
+void FrameTimer::update(World *world, float dt) {
+    char buffer[32];
+    for (auto entity : world->view<Text, FpsDisplay>()) {
+        auto &fps = world->unpack<FpsDisplay>(entity);
+        fps.time += dt;
+
+        if (fps.time < fps.interval) {
+            continue;
+        }
+        fps.time = 0.0f;
+
+        auto &text = world->unpack<Text>(entity);
+        int value_fps = int(roundf(1.0f / dt));
+        float value_ms = dt * 1000.0f;
+
+        switch (fps.unit) {
+        case FpsDisplay::FPS:
+            SDL_snprintf(buffer, sizeof(buffer), "%d", value_fps);
+            break;
+        case FpsDisplay::Miliseconds:
+            SDL_snprintf(buffer, sizeof(buffer), "%.3fms", value_ms);
+            break;
+        case FpsDisplay::All:
+        default:
+            SDL_snprintf(buffer, sizeof(buffer),
+                         "%d (%.3fms)", value_fps, value_ms);
+            break;
+        }
+        text.text = std::string{buffer};
+    }
+}
+
 } // two
